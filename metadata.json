@@ -1,0 +1,6 @@
+{
+  "name": "Catan UI Explorer",
+  "description": "A modern, clean, and scalable hexagonal board game UI inspired by Catan, built with React and Tailwind CSS.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
