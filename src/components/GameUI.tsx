@@ -2,12 +2,18 @@ import React from 'react';
 import { Board } from './Board';
 import { PlayerPanel } from './PlayerPanel';
 import { Dice } from './Dice';
+import { Lobby } from './Lobby';
+import { Chat } from './Chat';
 import { motion } from 'motion/react';
 import { useGame } from '../contexts/GameContext';
 import { Button } from './ui/button';
 
 export const GameUI: React.FC = () => {
-  const { state } = useGame();
+  const { state, roomId } = useGame();
+
+  if (!state) {
+    return <Lobby />;
+  }
 
   return (
     <div className="min-h-screen w-full bg-sea flex overflow-hidden font-sans text-text-dark relative">
@@ -55,7 +61,7 @@ export const GameUI: React.FC = () => {
             The Isle of Katan
           </h1>
           <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-white font-semibold text-sm border border-white/10">
-            Match ID: #4492-X
+            Match ID: #{roomId}
           </div>
         </motion.div>
 
@@ -78,6 +84,9 @@ export const GameUI: React.FC = () => {
         >
           <Dice />
         </motion.div>
+
+        {/* Chat Panel (Floating Bottom Left) */}
+        <Chat />
       </main>
     </div>
   );

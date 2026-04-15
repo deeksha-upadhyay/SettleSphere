@@ -6,9 +6,11 @@ import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
 
 export const Board: React.FC = () => {
-  const { state, tiles, buildSettlement, buildRoad, upgradeToCity, moveRobber } = useGame();
+  const { state, tiles, buildSettlement, buildRoad, upgradeToCity, moveRobber, playerId } = useGame();
 
-  if (tiles.length === 0) return null;
+  if (!state || tiles.length === 0) return null;
+
+  const isMyTurn = state.players[state.currentPlayerIndex].id === playerId;
 
   // Split tiles into rows: 3-4-5-4-3
   const rows = [
@@ -66,11 +68,15 @@ export const Board: React.FC = () => {
                   return (
                     <motion.div
                       key={vId}
-                      whileHover={{ scale: 1.2 }}
-                      onClick={() => settlement ? upgradeToCity(vId) : buildSettlement(vId)}
+                      whileHover={isMyTurn ? { scale: 1.2 } : {}}
+                      onClick={() => {
+                        if (!isMyTurn) return;
+                        settlement ? upgradeToCity(vId) : buildSettlement(vId);
+                      }}
                       style={pos}
                       className={cn(
-                        "absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 z-30 rounded-full cursor-pointer flex items-center justify-center transition-all",
+                        "absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 z-30 rounded-full flex items-center justify-center transition-all",
+                        isMyTurn ? "cursor-pointer" : "cursor-default",
                         settlement 
                           ? cn(owner?.color, settlement.type === 'city' ? "rounded-sm scale-125" : "rounded-full")
                           : "bg-white/20 hover:bg-white/50 border border-white/30 opacity-0 hover:opacity-100"
@@ -107,14 +113,18 @@ export const Board: React.FC = () => {
                   return (
                     <motion.div
                       key={eId}
-                      onClick={() => buildRoad(eId)}
+                      onClick={() => {
+                        if (!isMyTurn) return;
+                        buildRoad(eId);
+                      }}
                       style={{ 
                         top: styles.top, 
                         left: styles.left, 
                         transform: `translate(-50%, -50%) rotate(${styles.rotate})` 
                       }}
                       className={cn(
-                        "absolute w-10 h-2 z-20 cursor-pointer transition-all",
+                        "absolute w-10 h-2 z-20 transition-all",
+                        isMyTurn ? "cursor-pointer" : "cursor-default",
                         road 
                           ? cn(owner?.color, "h-3 shadow-md")
                           : "bg-white/10 hover:bg-white/40 opacity-0 hover:opacity-100"

@@ -5,14 +5,18 @@ import { useGame } from '../contexts/GameContext';
 import { cn } from '@/lib/utils';
 
 export const Dice: React.FC = () => {
-  const { state, rollDice, endTurn } = useGame();
+  const { state, rollDice, endTurn, playerId } = useGame();
+  
+  if (!state) return null;
+  
   const currentPlayer = state.players[state.currentPlayerIndex];
+  const isMyTurn = currentPlayer.id === playerId;
 
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="bg-accent px-6 py-3 rounded-full font-bold text-text-dark shadow-lg text-sm tracking-wider flex items-center gap-2">
         <div className={cn("w-2 h-2 rounded-full animate-pulse", currentPlayer.color)} />
-        {currentPlayer.name.toUpperCase()}'S TURN
+        {isMyTurn ? "YOUR TURN" : `${currentPlayer.name.toUpperCase()}'S TURN`}
       </div>
       <div className="bg-white p-5 rounded-[20px] shadow-lg flex gap-3 items-center border border-gray-100">
         <Die value={state.dice[0]} />
@@ -21,14 +25,14 @@ export const Dice: React.FC = () => {
       <div className="flex gap-2 w-full">
         <Button 
           onClick={rollDice}
-          disabled={state.hasRolled}
+          disabled={state.hasRolled || !isMyTurn}
           className="flex-1 bg-text-dark hover:bg-[#4F5D75] text-white font-bold py-7 rounded-xl shadow-lg transition-all uppercase tracking-widest text-sm disabled:opacity-50"
         >
           Roll Dice
         </Button>
         <Button 
           onClick={endTurn}
-          disabled={!state.hasRolled}
+          disabled={!state.hasRolled || !isMyTurn}
           className="flex-1 bg-accent hover:bg-[#FFD166]/80 text-text-dark font-bold py-7 rounded-xl shadow-lg transition-all uppercase tracking-widest text-sm disabled:opacity-50"
         >
           End Turn

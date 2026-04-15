@@ -1,250 +1,150 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { GameState, Player, ResourceType, TileData, Settlement, Road, StructureType } from '../types';
-import initialTiles from '../data/tiles.json';
-import { getCanonicalVertexId, getVertexTiles, getTileAt } from '../lib/gameUtils';
+import { io, Socket } from 'socket.io-client';
+
+interface ChatMessage {
+  id: string;
+  sender: string;
+  text: string;
+  timestamp: string;
+}
 
 interface GameContextType {
-  state: GameState;
+  state: GameState | null;
+  playerId: number | null;
+  roomId: string | null;
+  tiles: TileData[];
+  messages: ChatMessage[];
+  createGame: (playerName: string) => void;
+  joinGame: (roomId: string, playerName: string) => void;
   rollDice: () => void;
   endTurn: () => void;
   buildSettlement: (vertexId: string) => void;
   buildRoad: (edgeId: string) => void;
   upgradeToCity: (vertexId: string) => void;
   moveRobber: (tileId: number) => void;
-  tiles: TileData[];
+  sendMessage: (message: string) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
-const INITIAL_RESOURCES: Record<ResourceType, number> = {
-  wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0, desert: 0
-};
-
-const COSTS = {
-  road: { wood: 1, brick: 1 },
-  settlement: { wood: 1, brick: 1, sheep: 1, wheat: 1 },
-  city: { ore: 3, wheat: 2 }
-};
-
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [state, setState] = useState<GameState | null>(null);
   const [tiles, setTiles] = useState<TileData[]>([]);
-  const [state, setState] = useState<GameState>({
-    players: [
-      { id: 1, name: "Player 1", color: "bg-red-500", resources: { ...INITIAL_RESOURCES, wood: 4, brick: 4, sheep: 2, wheat: 2 }, victoryPoints: 0, roads: 0, settlements: 0, cities: 0 },
-      { id: 2, name: "Player 2", color: "bg-blue-500", resources: { ...INITIAL_RESOURCES, wood: 2, brick: 2, sheep: 2, wheat: 2 }, victoryPoints: 0, roads: 0, settlements: 0, cities: 0 },
-      { id: 3, name: "Player 3", color: "bg-orange-500", resources: { ...INITIAL_RESOURCES, wood: 2, brick: 2, sheep: 2, wheat: 2 }, victoryPoints: 0, roads: 0, settlements: 0, cities: 0 },
-    ],
-    currentPlayerIndex: 0,
-    dice: [1, 1],
-    hasRolled: false,
-    robberTileId: 8, // Desert by default
-    settlements: {},
-    roads: {},
-    winner: null,
-    gamePhase: 'play',
-    setupStep: 0,
-  });
+  const [playerId, setPlayerId] = useState<number | null>(null);
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    // Shuffle tiles once on mount
-    const shuffled = [...initialTiles].sort(() => Math.random() - 0.5) as TileData[];
-    setTiles(shuffled);
-    // Find desert for initial robber
-    const desert = shuffled.find(t => t.type === 'desert');
-    if (desert) {
-      setState(prev => ({ ...prev, robberTileId: desert.id }));
+    const socket = io();
+    socketRef.current = socket;
+
+    // Check for existing session
+    const savedRoomId = localStorage.getItem('katan_roomId');
+    const savedPlayerId = localStorage.getItem('katan_playerId');
+    const savedPlayerName = localStorage.getItem('katan_playerName');
+
+    if (savedRoomId && savedPlayerId && savedPlayerName) {
+      socket.emit('joinGame', { roomId: savedRoomId, playerName: savedPlayerName, reconnecting: true });
     }
+
+    socket.on('gameCreated', ({ roomId, state, tiles, playerId, playerName }) => {
+      setRoomId(roomId);
+      setState(state);
+      setTiles(tiles);
+      setPlayerId(playerId);
+      localStorage.setItem('katan_roomId', roomId);
+      localStorage.setItem('katan_playerId', playerId.toString());
+      localStorage.setItem('katan_playerName', playerName);
+    });
+
+    socket.on('gameJoined', ({ roomId, state, tiles, playerId, playerName }) => {
+      setRoomId(roomId);
+      setState(state);
+      setTiles(tiles);
+      setPlayerId(playerId);
+      localStorage.setItem('katan_roomId', roomId);
+      localStorage.setItem('katan_playerId', playerId.toString());
+      localStorage.setItem('katan_playerName', playerName);
+    });
+
+    socket.on('gameStateUpdate', (newState) => {
+      setState(newState);
+    });
+
+    socket.on('newMessage', (msg: ChatMessage) => {
+      setMessages(prev => [...prev, msg]);
+    });
+
+    socket.on('error', (msg) => {
+      alert(msg);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
-  const currentPlayer = state.players[state.currentPlayerIndex];
+  const createGame = useCallback((playerName: string) => {
+    socketRef.current?.emit('createGame', { playerName });
+  }, []);
+
+  const joinGame = useCallback((roomId: string, playerName: string) => {
+    socketRef.current?.emit('joinGame', { roomId, playerName });
+  }, []);
 
   const rollDice = useCallback(() => {
-    if (state.hasRolled) return;
-
-    const d1 = Math.floor(Math.random() * 6) + 1;
-    const d2 = Math.floor(Math.random() * 6) + 1;
-    const total = d1 + d2;
-
-    setState(prev => {
-      const newState = { ...prev, dice: [d1, d2] as [number, number], hasRolled: true };
-      
-      if (total === 7) {
-        newState.gamePhase = 'robber';
-        return newState;
-      }
-
-      // Distribute resources
-      const updatedPlayers = [...prev.players];
-      
-      (Object.values(prev.settlements) as Settlement[]).forEach(settlement => {
-        const playerIndex = updatedPlayers.findIndex(p => p.id === settlement.playerId);
-        if (playerIndex === -1) return;
-
-        const tileCoords = settlement.vertexId.replace('v:', '').split('|').map(s => s.split(',').map(Number));
-        
-        tileCoords.forEach(([q, r]) => {
-          const tile = getTileAt(tiles, q, r);
-          if (tile && tile.number === total && tile.id !== prev.robberTileId) {
-            const amount = settlement.type === 'city' ? 2 : 1;
-            const resType = tile.type;
-            if (resType !== 'desert') {
-              const updatedResources = { ...updatedPlayers[playerIndex].resources };
-              updatedResources[resType] += amount;
-              updatedPlayers[playerIndex] = {
-                ...updatedPlayers[playerIndex],
-                resources: updatedResources
-              };
-            }
-          }
-        });
-      });
-
-      return { ...newState, players: updatedPlayers };
-    });
-  }, [state.hasRolled, tiles]);
+    if (!roomId) return;
+    socketRef.current?.emit('rollDice', { roomId });
+  }, [roomId]);
 
   const endTurn = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      currentPlayerIndex: (prev.currentPlayerIndex + 1) % prev.players.length,
-      hasRolled: false,
-      gamePhase: 'play'
-    }));
-  }, []);
+    if (!roomId) return;
+    socketRef.current?.emit('endTurn', { roomId });
+  }, [roomId]);
 
   const buildSettlement = useCallback((vertexId: string) => {
-    if (state.settlements[vertexId] || state.winner) return;
-    
-    // Basic distance rule: No settlement can be adjacent to another
-    const vertexTiles = vertexId.replace('v:', '').split('|').map(s => s.split(',').map(Number));
-    // This is complex to check perfectly without a full vertex adjacency map,
-    // but we can check if any existing settlement is "too close".
-    // For now, let's stick to resource and ownership rules.
-
-    const canAfford = Object.entries(COSTS.settlement).every(
-      ([res, amount]) => currentPlayer.resources[res as ResourceType] >= amount
-    );
-
-    if (!canAfford) return;
-
-    setState(prev => {
-      const players = [...prev.players];
-      const p = { ...players[prev.currentPlayerIndex] };
-      
-      Object.entries(COSTS.settlement).forEach(([res, amount]) => {
-        p.resources[res as ResourceType] -= amount;
-      });
-
-      p.settlements += 1;
-      p.victoryPoints += 1;
-      players[prev.currentPlayerIndex] = p;
-
-      const newState = {
-        ...prev,
-        players,
-        settlements: {
-          ...prev.settlements,
-          [vertexId]: { playerId: p.id, type: 'settlement', vertexId }
-        }
-      };
-
-      if (p.victoryPoints >= 10) {
-        newState.winner = p.id;
-      }
-
-      return newState;
-    });
-  }, [currentPlayer, state.settlements, state.winner]);
+    if (!roomId) return;
+    socketRef.current?.emit('buildSettlement', { roomId, vertexId });
+  }, [roomId]);
 
   const buildRoad = useCallback((edgeId: string) => {
-    if (state.roads[edgeId]) return;
-
-    const canAfford = Object.entries(COSTS.road).every(
-      ([res, amount]) => currentPlayer.resources[res as ResourceType] >= amount
-    );
-
-    if (!canAfford) return;
-
-    setState(prev => {
-      const players = [...prev.players];
-      const p = { ...players[prev.currentPlayerIndex] };
-      
-      Object.entries(COSTS.road).forEach(([res, amount]) => {
-        p.resources[res as ResourceType] -= amount;
-      });
-
-      p.roads += 1;
-      players[prev.currentPlayerIndex] = p;
-
-      return {
-        ...prev,
-        players,
-        roads: {
-          ...prev.roads,
-          [edgeId]: { playerId: p.id, edgeId }
-        }
-      };
-    });
-  }, [currentPlayer, state.roads]);
+    if (!roomId) return;
+    socketRef.current?.emit('buildRoad', { roomId, edgeId });
+  }, [roomId]);
 
   const upgradeToCity = useCallback((vertexId: string) => {
-    const s = state.settlements[vertexId];
-    if (!s || s.playerId !== currentPlayer.id || s.type === 'city' || state.winner) return;
-
-    const canAfford = Object.entries(COSTS.city).every(
-      ([res, amount]) => currentPlayer.resources[res as ResourceType] >= amount
-    );
-
-    if (!canAfford) return;
-
-    setState(prev => {
-      const players = [...prev.players];
-      const p = { ...players[prev.currentPlayerIndex] };
-      
-      Object.entries(COSTS.city).forEach(([res, amount]) => {
-        p.resources[res as ResourceType] -= amount;
-      });
-
-      p.cities += 1;
-      p.victoryPoints += 1; // City adds 1 more point (total 2 for that spot)
-      players[prev.currentPlayerIndex] = p;
-
-      const newState = {
-        ...prev,
-        players,
-        settlements: {
-          ...prev.settlements,
-          [vertexId]: { ...s, type: 'city' }
-        }
-      };
-
-      if (p.victoryPoints >= 10) {
-        newState.winner = p.id;
-      }
-
-      return newState;
-    });
-  }, [currentPlayer, state.settlements, state.winner]);
+    if (!roomId) return;
+    socketRef.current?.emit('upgradeToCity', { roomId, vertexId });
+  }, [roomId]);
 
   const moveRobber = useCallback((tileId: number) => {
-    if (state.gamePhase !== 'robber') return;
-    setState(prev => ({
-      ...prev,
-      robberTileId: tileId,
-      gamePhase: 'play'
-    }));
-  }, [state.gamePhase]);
+    if (!roomId) return;
+    socketRef.current?.emit('moveRobber', { roomId, tileId });
+  }, [roomId]);
+
+  const sendMessage = useCallback((message: string) => {
+    if (!roomId) return;
+    socketRef.current?.emit('sendMessage', { roomId, message });
+  }, [roomId]);
 
   return (
     <GameContext.Provider value={{ 
       state, 
+      playerId,
+      roomId,
+      tiles,
+      messages,
+      createGame,
+      joinGame,
       rollDice, 
       endTurn, 
       buildSettlement, 
       buildRoad, 
       upgradeToCity, 
       moveRobber,
-      tiles
+      sendMessage
     }}>
       {children}
     </GameContext.Provider>
