@@ -4,11 +4,14 @@
  */
 
 import { GameUI } from './components/GameUI';
+import { GameProvider } from './contexts/GameContext';
 
 export default function App() {
   return (
-    <div className="w-full h-screen overflow-hidden">
-      <GameUI />
-    </div>
+    <GameProvider>
+      <div className="w-full h-screen overflow-hidden">
+        <GameUI />
+      </div>
+    </GameProvider>
   );
 }

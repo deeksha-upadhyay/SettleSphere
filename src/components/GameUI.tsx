@@ -3,10 +3,37 @@ import { Board } from './Board';
 import { PlayerPanel } from './PlayerPanel';
 import { Dice } from './Dice';
 import { motion } from 'motion/react';
+import { useGame } from '../contexts/GameContext';
+import { Button } from './ui/button';
 
 export const GameUI: React.FC = () => {
+  const { state } = useGame();
+
   return (
     <div className="min-h-screen w-full bg-sea flex overflow-hidden font-sans text-text-dark relative">
+      {/* Winner Overlay */}
+      {state.winner !== null && (
+        <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center">
+          <motion.div 
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white p-12 rounded-[40px] shadow-2xl text-center flex flex-col items-center gap-6"
+          >
+            <div className="text-6xl">🏆</div>
+            <h2 className="text-5xl font-black text-text-dark">
+              {state.players.find(p => p.id === state.winner)?.name} WINS!
+            </h2>
+            <p className="text-xl text-gray-500">Congratulations on conquering Katan!</p>
+            <Button 
+              onClick={() => window.location.reload()}
+              className="mt-4 bg-orange-600 hover:bg-orange-700 text-white px-12 py-8 rounded-2xl text-xl font-bold"
+            >
+              Play Again
+            </Button>
+          </motion.div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <motion.aside 
         initial={{ x: -300, opacity: 0 }}
