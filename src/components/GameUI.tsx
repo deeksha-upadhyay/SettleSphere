@@ -16,7 +16,27 @@ import { Toaster } from './ui/sonner';
 import { ScrollText, History, Trophy, PartyPopper } from 'lucide-react';
 
 export const GameUI: React.FC = () => {
-  const { state, roomId } = useGame();
+  const { state, roomId, playerId } = useGame();
+  const [showYourTurn, setShowYourTurn] = React.useState(false);
+  const [showRobberAlert, setShowRobberAlert] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!state || !playerId) return;
+    const isMyTurn = state.players[state.currentPlayerIndex].id === playerId;
+    if (isMyTurn && state.gamePhase !== 'waiting') {
+      setShowYourTurn(true);
+      const timer = setTimeout(() => setShowYourTurn(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [state?.currentPlayerIndex, playerId]);
+
+  React.useEffect(() => {
+    if (state?.gamePhase === 'robber') {
+      setShowRobberAlert(true);
+      const timer = setTimeout(() => setShowRobberAlert(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [state?.gamePhase]);
 
   if (!state) {
     return <Lobby />;
@@ -30,6 +50,44 @@ export const GameUI: React.FC = () => {
     <div className="min-h-screen w-full bg-sea flex overflow-hidden font-sans text-text-dark relative">
       <Toaster position="top-center" />
       <DemoControls />
+
+      {/* Your Turn Overlay */}
+      <AnimatePresence>
+        {showYourTurn && (
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0, y: -50 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 1.5, opacity: 0, y: 50 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center pointer-events-none"
+          >
+            <div className="bg-accent text-text-dark px-12 py-6 rounded-[40px] shadow-2xl border-4 border-white/50 backdrop-blur-md">
+              <h2 className="text-6xl font-black uppercase tracking-tighter italic">Your Turn!</h2>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Robber Alert */}
+      <AnimatePresence>
+        {showRobberAlert && (
+          <motion.div
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 300, opacity: 0 }}
+            className="fixed top-24 right-6 z-[110]"
+          >
+            <div className="bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border-2 border-red-400">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
+                <span className="text-xl">👤</span>
+              </div>
+              <div>
+                <p className="font-black uppercase tracking-widest text-xs">Alert</p>
+                <p className="font-bold">Robber Activated!</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Winner Overlay */}
       {state.winner !== null && (

@@ -4,6 +4,8 @@ import { Button } from './ui/button';
 import { motion } from 'motion/react';
 import { Users, Copy, Play } from 'lucide-react';
 
+import { toast } from 'sonner';
+
 export const WaitingRoom: React.FC = () => {
   const { state, roomId, startGame, playerId } = useGame();
 
@@ -14,16 +16,27 @@ export const WaitingRoom: React.FC = () => {
   const copyRoomId = () => {
     if (roomId) {
       navigator.clipboard.writeText(roomId);
-      alert('Room ID copied to clipboard!');
+      toast.success('Room ID copied to clipboard!');
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-sea flex items-center justify-center p-4">
+    <div className="min-h-screen w-full bg-sea flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated Background Elements */}
       <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="bg-white p-10 rounded-[40px] shadow-2xl w-full max-w-md flex flex-col gap-8"
+        animate={{ 
+          scale: [1, 1.2, 1],
+          rotate: [0, 360],
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        className="absolute -top-20 -left-20 w-64 h-64 bg-accent/20 rounded-full blur-3xl"
+      />
+      
+      <motion.div 
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 100, damping: 20 }}
+        className="bg-white p-10 rounded-[40px] shadow-2xl w-full max-w-md flex flex-col gap-8 relative z-10"
       >
         <div className="text-center">
           <h1 className="font-serif italic text-5xl text-text-dark mb-2">Waiting Room</h1>

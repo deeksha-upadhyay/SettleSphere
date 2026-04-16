@@ -46,17 +46,24 @@ export const Chat: React.FC = () => {
 
             {/* Messages */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
-              {messages.map((msg) => (
-                <div key={msg.id} className="flex flex-col gap-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-[11px] font-black text-text-dark/40 uppercase tracking-tighter">{msg.sender}</span>
-                    <span className="text-[9px] text-gray-300">{msg.timestamp}</span>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded-2xl rounded-tl-none text-sm text-text-dark font-medium border border-gray-100">
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
+              <AnimatePresence initial={false}>
+                {messages.map((msg) => (
+                  <motion.div 
+                    key={msg.id} 
+                    initial={{ opacity: 0, x: -20, scale: 0.8 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    className="flex flex-col gap-1"
+                  >
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[11px] font-black text-text-dark/40 uppercase tracking-tighter">{msg.sender}</span>
+                      <span className="text-[9px] text-gray-300">{msg.timestamp}</span>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-2xl rounded-tl-none text-sm text-text-dark font-medium border border-gray-100">
+                      {msg.text}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
               {messages.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center text-center opacity-20 grayscale">
                   <MessageSquare size={48} className="mb-2" />

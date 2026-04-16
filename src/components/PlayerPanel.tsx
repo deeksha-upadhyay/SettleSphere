@@ -3,6 +3,7 @@ import { Player } from '../types';
 import { cn } from '@/lib/utils';
 import { useGame } from '../contexts/GameContext';
 import { User, Home, Building2, Map, Trophy } from 'lucide-react';
+import { motion } from 'motion/react';
 
 export const PlayerPanel: React.FC = () => {
   const { state, playerId } = useGame();
@@ -22,19 +23,35 @@ export const PlayerPanel: React.FC = () => {
           {players.map((player, index) => {
             const isCurrent = state.currentPlayerIndex === index;
             return (
-              <div 
+              <motion.div 
                 key={player.id} 
+                initial={false}
+                animate={isCurrent ? {
+                  scale: 1.02,
+                  borderColor: '#F4D03F',
+                  boxShadow: '0 0 20px rgba(244, 208, 63, 0.3)',
+                  opacity: 1,
+                  filter: 'grayscale(0)'
+                } : {
+                  scale: 1,
+                  borderColor: 'transparent',
+                  boxShadow: 'none',
+                  opacity: 0.6,
+                  filter: 'grayscale(0.5)'
+                }}
                 className={cn(
                   "p-5 rounded-[24px] transition-all duration-500 border relative overflow-hidden",
-                  isCurrent 
-                    ? "bg-white border-accent shadow-xl scale-[1.02] z-10" 
-                    : "bg-gray-50/50 border-transparent opacity-60 grayscale-[0.5]"
+                  isCurrent ? "bg-white z-10" : "bg-gray-50/50"
                 )}
               >
                 {isCurrent && (
-                  <div className="absolute top-0 right-0 bg-accent px-3 py-1 rounded-bl-xl text-[10px] font-black text-text-dark uppercase tracking-widest">
+                  <motion.div 
+                    initial={{ x: 100 }}
+                    animate={{ x: 0 }}
+                    className="absolute top-0 right-0 bg-accent px-3 py-1 rounded-bl-xl text-[10px] font-black text-text-dark uppercase tracking-widest"
+                  >
                     Active
-                  </div>
+                  </motion.div>
                 )}
                 
                 <div className="flex items-center gap-4 mb-4">
@@ -51,7 +68,7 @@ export const PlayerPanel: React.FC = () => {
                   <StatItem icon={<Map size={12} />} label="Roads" value={player.roads} />
                   <StatItem icon={<Trophy size={12} />} label="Points" value={player.victoryPoints} color="text-yellow-600" />
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>

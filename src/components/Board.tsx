@@ -89,6 +89,9 @@ export const Board: React.FC = () => {
                   return (
                     <motion.div
                       key={vId}
+                      initial={settlement ? { scale: 0, opacity: 0 } : false}
+                      animate={settlement ? { scale: 1, opacity: 1 } : { opacity: isValidBuild ? 1 : 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
                       whileHover={isMyTurn ? { scale: 1.2 } : {}}
                       onClick={() => {
                         if (!isMyTurn) return;
@@ -103,18 +106,22 @@ export const Board: React.FC = () => {
                         "absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 z-30 rounded-full flex items-center justify-center transition-all",
                         isMyTurn ? "cursor-pointer" : "cursor-default",
                         settlement 
-                          ? cn(owner?.color, settlement.type === 'city' ? "rounded-sm scale-125" : "rounded-full")
+                          ? cn(owner?.color, settlement.type === 'city' ? "rounded-sm scale-125 shadow-[0_0_15px_rgba(255,255,255,0.5)]" : "rounded-full shadow-lg")
                           : cn(
-                              "bg-white/20 border border-white/30 opacity-0 hover:opacity-100",
-                              isValidBuild && "opacity-100 bg-white/40 border-accent animate-pulse scale-110"
+                              "bg-white/20 border border-white/30",
+                              isValidBuild && "bg-white/40 border-accent shadow-[0_0_10px_rgba(255,255,255,0.8)] ring-2 ring-accent/50 ring-offset-1 animate-pulse scale-110"
                             ),
-                        canUpgrade && "ring-4 ring-accent ring-offset-2"
+                        canUpgrade && "ring-4 ring-accent ring-offset-2 shadow-[0_0_20px_rgba(255,215,0,0.6)]"
                       )}
                     >
                       {settlement && (
-                        <span className="text-[10px] font-bold text-white">
+                        <motion.span 
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="text-[10px] font-bold text-white"
+                        >
                           {settlement.type === 'city' ? 'C' : 'S'}
-                        </span>
+                        </motion.span>
                       )}
                     </motion.div>
                   );
@@ -151,6 +158,9 @@ export const Board: React.FC = () => {
                   return (
                     <motion.div
                       key={eId}
+                      initial={road ? { scaleX: 0, opacity: 0 } : false}
+                      animate={road ? { scaleX: 1, opacity: 1 } : { opacity: isValidRoad ? 1 : 0 }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
                       onClick={() => {
                         if (!isMyTurn) return;
                         if (state.gamePhase === 'setup') {
@@ -162,16 +172,17 @@ export const Board: React.FC = () => {
                       style={{ 
                         top: styles.top, 
                         left: styles.left, 
-                        transform: `translate(-50%, -50%) rotate(${styles.rotate})` 
+                        transform: `translate(-50%, -50%) rotate(${styles.rotate})`,
+                        transformOrigin: 'center'
                       }}
                       className={cn(
                         "absolute w-10 h-2 z-20 transition-all",
                         isMyTurn ? "cursor-pointer" : "cursor-default",
                         road 
-                          ? cn(owner?.color, "h-3 shadow-md")
+                          ? cn(owner?.color, "h-3 shadow-md border border-white/20")
                           : cn(
-                              "bg-white/10 border border-white/20 opacity-0 hover:opacity-100",
-                              isValidRoad && "opacity-100 bg-white/30 border-accent animate-pulse h-3"
+                              "bg-white/10 border border-white/20",
+                              isValidRoad && "bg-white/30 border-accent shadow-[0_0_8px_rgba(255,255,255,0.5)] ring-1 ring-accent/30 animate-pulse h-3"
                             )
                       )}
                     />
