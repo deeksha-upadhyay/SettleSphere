@@ -31,6 +31,13 @@ interface Room {
 
 const rooms: Record<string, Room> = {};
 
+function addLog(room: Room, message: string) {
+  room.state.logs.push(message);
+  if (room.state.logs.length > 50) {
+    room.state.logs.shift();
+  }
+}
+
 async function startServer() {
   const app = express();
   const httpServer = createServer(app);
@@ -73,6 +80,7 @@ async function startServer() {
         setupStep: 0,
         discardingPlayers: [],
         victims: [],
+        logs: ["Game created. Waiting for players..."],
       };
 
       rooms[roomId] = {
@@ -125,6 +133,7 @@ async function startServer() {
 
       room.state.players.push(newPlayer);
       room.players.push({ socketId: socket.id, playerId, name: playerName });
+      addLog(room, `${playerName} joined the room.`);
 
       socket.join(roomId);
       socket.emit("gameJoined", { roomId, state: room.state, tiles: room.tiles, playerId, playerName });
@@ -142,6 +151,7 @@ async function startServer() {
       }
 
       room.state.gamePhase = 'setup';
+      addLog(room, "Game started! Setup phase begins.");
       room.state.currentPlayerIndex = 0;
       room.state.setupStep = 0;
       io.to(roomId).emit("gameStateUpdate", room.state);
@@ -161,6 +171,7 @@ async function startServer() {
 
       room.state.dice = [d1, d2];
       room.state.hasRolled = true;
+      addLog(room, `${currentPlayer.name} rolled a ${total}.`);
 
       if (total === 7) {
         // Check for discards
@@ -269,6 +280,7 @@ async function startServer() {
         player.settlements += 1;
         player.victoryPoints += 1;
         room.state.settlements[vertexId] = { playerId: player.id, type: 'settlement', vertexId };
+        addLog(room, `${player.name} built a settlement.`);
 
         // If 2nd settlement, give resources
         if (room.state.setupStep >= room.state.players.length) {
@@ -303,6 +315,7 @@ async function startServer() {
         player.settlements += 1;
         player.victoryPoints += 1;
         room.state.settlements[vertexId] = { playerId: player.id, type: 'settlement', vertexId };
+        addLog(room, `${player.name} built a settlement.`);
       }
 
       if (player.victoryPoints >= 10) {
@@ -331,6 +344,7 @@ async function startServer() {
 
         player.roads += 1;
         room.state.roads[edgeId] = { playerId: player.id, edgeId };
+        addLog(room, `${player.name} built a road.`);
 
         // Progress setup step
         room.state.setupStep += 1;
@@ -358,6 +372,7 @@ async function startServer() {
 
         player.roads += 1;
         room.state.roads[edgeId] = { playerId: player.id, edgeId };
+        addLog(room, `${player.name} built a road.`);
       }
 
       io.to(roomId).emit("gameStateUpdate", room.state);
@@ -389,6 +404,7 @@ async function startServer() {
       player.cities += 1;
       player.victoryPoints += 1;
       settlement.type = 'city';
+      addLog(room, `${player.name} upgraded to a city.`);
 
       if (player.victoryPoints >= 10) {
         room.state.winner = player.id;
@@ -407,6 +423,7 @@ async function startServer() {
       if (playerSocket?.socketId !== socket.id) return;
 
       room.state.robberTileId = tileId;
+      addLog(room, `${player.name} moved the robber.`);
       
       // Find potential victims on this tile
       const tile = room.tiles.find(t => t.id === tileId);
@@ -448,6 +465,7 @@ async function startServer() {
       room.state.currentPlayerIndex = (room.state.currentPlayerIndex + 1) % room.state.players.length;
       room.state.hasRolled = false;
       room.state.gamePhase = 'play';
+      addLog(room, `${player.name} ended their turn.`);
 
       io.to(roomId).emit("gameStateUpdate", room.state);
     });
@@ -490,6 +508,7 @@ async function startServer() {
         const stolenRes = availableResources[Math.floor(Math.random() * availableResources.length)];
         targetPlayer.resources[stolenRes] -= 1;
         player.resources[stolenRes] += 1;
+        addLog(room, `${player.name} stole a card from ${targetPlayer.name}.`);
       }
 
       room.state.gamePhase = 'play';

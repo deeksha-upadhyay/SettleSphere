@@ -24,7 +24,7 @@ export const Chat: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-10 left-10 z-40">
+    <div className="relative">
       <AnimatePresence>
         {isOpen && (
           <motion.div

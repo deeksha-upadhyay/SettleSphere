@@ -3,6 +3,8 @@ import { useGame } from '../contexts/GameContext';
 import { Button } from './ui/button';
 import { motion } from 'motion/react';
 
+import { HowToPlay } from './HowToPlay';
+
 export const Lobby: React.FC = () => {
   const { createGame, joinGame } = useGame();
   const [playerName, setPlayerName] = useState('');
@@ -63,6 +65,10 @@ export const Lobby: React.FC = () => {
                 Join
               </Button>
             </div>
+          </div>
+
+          <div className="pt-6 border-t border-gray-100 flex justify-center">
+            <HowToPlay />
           </div>
         </div>
       </motion.div>

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { GameState, Player, ResourceType, TileData, Settlement, Road, StructureType } from '../types';
 import { io, Socket } from 'socket.io-client';
+import { toast } from 'sonner';
 
 interface ChatMessage {
   id: string;
@@ -72,16 +73,29 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('katan_playerName', playerName);
     });
 
-    socket.on('gameStateUpdate', (newState) => {
-      setState(newState);
+    socket.on('gameStateUpdate', (newState: GameState) => {
+      setState(prev => {
+        if (prev && newState.logs.length > prev.logs.length) {
+          const newLogs = newState.logs.slice(prev.logs.length);
+          newLogs.forEach(log => {
+            if (log.includes('rolled')) toast(log, { icon: '🎲' });
+            else if (log.includes('built')) toast(log, { icon: '🏠' });
+            else if (log.includes('stole')) toast(log, { icon: '🕵️' });
+            else if (log.includes('joined')) toast(log, { icon: '👋' });
+            else toast(log);
+          });
+        }
+        return newState;
+      });
     });
 
     socket.on('newMessage', (msg: ChatMessage) => {
       setMessages(prev => [...prev, msg]);
+      toast(`New message from ${msg.sender}`, { duration: 2000 });
     });
 
     socket.on('error', (msg) => {
-      alert(msg);
+      toast.error(msg);
     });
 
     return () => {

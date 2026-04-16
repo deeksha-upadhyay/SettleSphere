@@ -45,4 +45,5 @@ export interface GameState {
   setupStep: number; // for initial placement
   discardingPlayers: number[]; // IDs of players who still need to discard
   victims: number[]; // IDs of players who can be stolen from
+  logs: string[];
 }

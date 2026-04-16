@@ -1,10 +1,8 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
 import { Player } from '../types';
 import { cn } from '@/lib/utils';
 import { useGame } from '../contexts/GameContext';
+import { User, Home, Building2, Map, Trophy } from 'lucide-react';
 
 export const PlayerPanel: React.FC = () => {
   const { state, playerId } = useGame();
@@ -13,43 +11,69 @@ export const PlayerPanel: React.FC = () => {
   const myPlayer = players.find(p => p.id === playerId) || players[0];
 
   return (
-    <div className="w-[260px] flex flex-col gap-6 h-full overflow-y-auto p-8 bg-panel border-r border-black/10 shadow-[4px_0_20px_rgba(0,0,0,0.05)] custom-scrollbar z-10">
+    <div className="w-[300px] flex flex-col gap-8 h-full overflow-y-auto p-8 bg-white/95 backdrop-blur-md border-r border-black/5 shadow-2xl custom-scrollbar z-10">
       <div>
-        <h3 className="text-[14px] font-bold text-text-dark/60 uppercase tracking-[1.5px] mb-4">Active Players</h3>
-        <div className="space-y-3">
-          {players.map((player, index) => (
-            <div 
-              key={player.id} 
-              className={cn(
-                "p-4 rounded-2xl bg-white shadow-[0_2px_6px_rgba(0,0,0,0.04)] border-2 transition-all",
-                state.currentPlayerIndex === index ? "border-[#E9C46A] shadow-[0_0_15px_rgba(233,196,106,0.3)]" : "border-transparent opacity-80"
-              )}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className={cn("w-8 h-8 rounded-full shadow-sm", player.color)} />
-                <span className="font-bold text-[15px] text-text-dark">{player.name} {state.currentPlayerIndex === index && "(Turn)"}</span>
+        <div className="flex items-center gap-2 mb-6">
+          <User className="text-text-dark/40" size={16} />
+          <h3 className="text-[12px] font-black text-text-dark/40 uppercase tracking-[2px]">The Settlers</h3>
+        </div>
+        
+        <div className="space-y-4">
+          {players.map((player, index) => {
+            const isCurrent = state.currentPlayerIndex === index;
+            return (
+              <div 
+                key={player.id} 
+                className={cn(
+                  "p-5 rounded-[24px] transition-all duration-500 border relative overflow-hidden",
+                  isCurrent 
+                    ? "bg-white border-accent shadow-xl scale-[1.02] z-10" 
+                    : "bg-gray-50/50 border-transparent opacity-60 grayscale-[0.5]"
+                )}
+              >
+                {isCurrent && (
+                  <div className="absolute top-0 right-0 bg-accent px-3 py-1 rounded-bl-xl text-[10px] font-black text-text-dark uppercase tracking-widest">
+                    Active
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-4 mb-4">
+                  <div className={cn("w-10 h-10 rounded-full shadow-inner border-2 border-white", player.color)} />
+                  <div className="flex flex-col">
+                    <span className="font-black text-lg text-text-dark leading-none">{player.name}</span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Player {player.id}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <StatItem icon={<Home size={12} />} label="Sett." value={player.settlements} />
+                  <StatItem icon={<Building2 size={12} />} label="Cities" value={player.cities} />
+                  <StatItem icon={<Map size={12} />} label="Roads" value={player.roads} />
+                  <StatItem icon={<Trophy size={12} />} label="Points" value={player.victoryPoints} color="text-yellow-600" />
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-y-2 gap-x-1 text-[13px] text-gray-500">
-                <div className="flex items-center gap-1.5">🏠 {player.settlements} Set.</div>
-                <div className="flex items-center gap-1.5">🏙️ {player.cities} Cities</div>
-                <div className="flex items-center gap-1.5">🛤️ {player.roads} Roads</div>
-                <div className="flex items-center gap-1.5 font-bold text-text-dark">🏆 {player.victoryPoints} VP</div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      <div className="mt-auto">
-        <h3 className="text-[14px] font-bold text-text-dark/60 uppercase tracking-[1.5px] mb-4">Your Resources</h3>
-        <div className="grid grid-cols-3 gap-2">
+      <div className="mt-auto pt-8 border-t border-black/5">
+        <div className="flex items-center gap-2 mb-6">
+          <Map className="text-text-dark/40" size={16} />
+          <h3 className="text-[12px] font-black text-text-dark/40 uppercase tracking-[2px]">Your Resources</h3>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3">
           {Object.entries(myPlayer.resources).map(([res, count]) => (
             res !== 'desert' && (
-              <div key={res} className="text-center bg-white/50 p-2 rounded-xl border border-black/5">
-                <div className="text-xl mb-0.5">
+              <div key={res} className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-black/5 shadow-sm hover:shadow-md transition-shadow">
+                <div className="text-2xl">
                   {res === 'wood' ? '🌲' : res === 'brick' ? '🧱' : res === 'sheep' ? '🐑' : res === 'wheat' ? '🌾' : '⛰️'}
                 </div>
-                <div className="text-[11px] font-bold text-text-dark">{count}</div>
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter leading-none mb-1">{res}</span>
+                  <span className="text-lg font-black text-text-dark leading-none">{count}</span>
+                </div>
               </div>
             )
           ))}
@@ -58,3 +82,13 @@ export const PlayerPanel: React.FC = () => {
     </div>
   );
 };
+
+const StatItem: React.FC<{ icon: React.ReactNode; label: string; value: number; color?: string }> = ({ icon, label, value, color }) => (
+  <div className="flex items-center gap-2 bg-white/50 p-2 rounded-xl border border-black/5">
+    <div className="text-gray-400">{icon}</div>
+    <div className="flex flex-col">
+      <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter leading-none mb-0.5">{label}</span>
+      <span className={cn("text-xs font-black leading-none", color || "text-text-dark")}>{value}</span>
+    </div>
+  </div>
+);

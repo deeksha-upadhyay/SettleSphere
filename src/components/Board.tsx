@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { HexTile } from './HexTile';
 import { useGame } from '../contexts/GameContext';
+import { Settlement, Road } from '../types';
 import { getCanonicalVertexId, getCanonicalEdgeId } from '../lib/gameUtils';
 import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export const Board: React.FC = () => {
   const { state, tiles, buildSettlement, buildRoad, upgradeToCity, moveRobber, playerId } = useGame();
+  const [confirmAction, setConfirmAction] = useState<{ type: 'settlement' | 'road' | 'city', id: string } | null>(null);
 
   if (!state || tiles.length === 0) return null;
 
@@ -58,6 +61,20 @@ export const Board: React.FC = () => {
 
                   const settlement = state.settlements[vId];
                   const owner = settlement ? state.players.find(p => p.id === settlement.playerId) : null;
+                  
+                  const isTooClose = Object.keys(state.settlements).some(existingId => {
+                    const t1 = vId.replace('v:', '').split('|');
+                    const t2 = existingId.replace('v:', '').split('|');
+                    const common = t1.filter(t => t2.includes(t));
+                    return common.length >= 2;
+                  });
+                  
+                  const isConnectedToRoad = (Object.values(state.roads) as Road[]).some(road => 
+                    road.playerId === playerId && road.edgeId.includes(vId)
+                  );
+
+                  const isValidBuild = isMyTurn && !settlement && !isTooClose && (state.gamePhase === 'setup' || isConnectedToRoad);
+                  const canUpgrade = isMyTurn && settlement && settlement.playerId === playerId && settlement.type === 'settlement' && state.gamePhase === 'play';
 
                   // Position mapping
                   const pos = [
@@ -75,7 +92,11 @@ export const Board: React.FC = () => {
                       whileHover={isMyTurn ? { scale: 1.2 } : {}}
                       onClick={() => {
                         if (!isMyTurn) return;
-                        settlement ? upgradeToCity(vId) : buildSettlement(vId);
+                        if (state.gamePhase === 'setup') {
+                          settlement ? upgradeToCity(vId) : buildSettlement(vId);
+                        } else {
+                          setConfirmAction({ type: settlement ? 'city' : 'settlement', id: vId });
+                        }
                       }}
                       style={pos}
                       className={cn(
@@ -83,7 +104,11 @@ export const Board: React.FC = () => {
                         isMyTurn ? "cursor-pointer" : "cursor-default",
                         settlement 
                           ? cn(owner?.color, settlement.type === 'city' ? "rounded-sm scale-125" : "rounded-full")
-                          : "bg-white/20 hover:bg-white/50 border border-white/30 opacity-0 hover:opacity-100"
+                          : cn(
+                              "bg-white/20 border border-white/30 opacity-0 hover:opacity-100",
+                              isValidBuild && "opacity-100 bg-white/40 border-accent animate-pulse scale-110"
+                            ),
+                        canUpgrade && "ring-4 ring-accent ring-offset-2"
                       )}
                     >
                       {settlement && (
@@ -104,6 +129,15 @@ export const Board: React.FC = () => {
                   const road = state.roads[eId];
                   const owner = road ? state.players.find(p => p.id === road.playerId) : null;
 
+                  const isConnectedToMyRoad = (Object.values(state.roads) as Road[]).some(r => 
+                    r.playerId === playerId && (r.edgeId.includes(eId.split('|')[0]) || r.edgeId.includes(eId.split('|')[1]))
+                  );
+                  const isConnectedToMySettlement = (Object.values(state.settlements) as Settlement[]).some(s => 
+                    s.playerId === playerId && eId.includes(s.vertexId)
+                  );
+                  
+                  const isValidRoad = isMyTurn && !road && (state.gamePhase === 'setup' ? isConnectedToMySettlement : (isConnectedToMyRoad || isConnectedToMySettlement));
+
                   // Position and rotation mapping
                   const styles = [
                     { top: '12%', left: '75%', rotate: '30deg' },
@@ -119,7 +153,11 @@ export const Board: React.FC = () => {
                       key={eId}
                       onClick={() => {
                         if (!isMyTurn) return;
-                        buildRoad(eId);
+                        if (state.gamePhase === 'setup') {
+                          buildRoad(eId);
+                        } else {
+                          setConfirmAction({ type: 'road', id: eId });
+                        }
                       }}
                       style={{ 
                         top: styles.top, 
@@ -131,7 +169,10 @@ export const Board: React.FC = () => {
                         isMyTurn ? "cursor-pointer" : "cursor-default",
                         road 
                           ? cn(owner?.color, "h-3 shadow-md")
-                          : "bg-white/10 hover:bg-white/40 opacity-0 hover:opacity-100"
+                          : cn(
+                              "bg-white/10 border border-white/20 opacity-0 hover:opacity-100",
+                              isValidRoad && "opacity-100 bg-white/30 border-accent animate-pulse h-3"
+                            )
                       )}
                     />
                   );
@@ -141,6 +182,19 @@ export const Board: React.FC = () => {
           })}
         </div>
       ))}
+      <ConfirmDialog 
+        isOpen={confirmAction !== null}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          if (!confirmAction) return;
+          if (confirmAction.type === 'settlement') buildSettlement(confirmAction.id);
+          else if (confirmAction.type === 'road') buildRoad(confirmAction.id);
+          else if (confirmAction.type === 'city') upgradeToCity(confirmAction.id);
+          setConfirmAction(null);
+        }}
+        title={`Build ${confirmAction?.type === 'city' ? 'City' : confirmAction?.type === 'settlement' ? 'Settlement' : 'Road'}?`}
+        description={`Are you sure you want to build this ${confirmAction?.type}? This action cannot be undone.`}
+      />
     </div>
   );
 };

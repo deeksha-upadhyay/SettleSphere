@@ -1,11 +1,13 @@
-import React from 'react';
-import { motion } from 'motion/react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { useGame } from '../contexts/GameContext';
 import { cn } from '@/lib/utils';
+import { RotateCcw, Play, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export const Dice: React.FC = () => {
   const { state, rollDice, endTurn, playerId } = useGame();
+  const [showConfirm, setShowConfirm] = useState(false);
   
   if (!state) return null;
   
@@ -32,35 +34,96 @@ export const Dice: React.FC = () => {
         <div className={cn("w-2 h-2 rounded-full animate-pulse", currentPlayer.color)} />
         {isMyTurn ? "YOUR TURN" : `${currentPlayer.name.toUpperCase()}'S TURN`}
       </div>
-      <div className="bg-white p-5 rounded-[20px] shadow-lg flex gap-3 items-center border border-gray-100">
-        <Die value={state.dice[0]} />
-        <Die value={state.dice[1]} />
-      </div>
-      <div className="flex gap-2 w-full">
-        <Button 
-          onClick={rollDice}
-          disabled={state.hasRolled || !isMyTurn}
-          className="flex-1 bg-text-dark hover:bg-[#4F5D75] text-white font-bold py-7 rounded-xl shadow-lg transition-all uppercase tracking-widest text-sm disabled:opacity-50"
-        >
-          Roll Dice
-        </Button>
-        <Button 
-          onClick={endTurn}
-          disabled={!state.hasRolled || !isMyTurn}
-          className="flex-1 bg-accent hover:bg-[#FFD166]/80 text-text-dark font-bold py-7 rounded-xl shadow-lg transition-all uppercase tracking-widest text-sm disabled:opacity-50"
-        >
-          End Turn
-        </Button>
+
+      <div className="bg-white/90 backdrop-blur-md p-6 rounded-[32px] shadow-2xl flex flex-col gap-6 items-center border border-white/20">
+        <div className="flex gap-4 items-center">
+          <Die value={state.dice[0]} rolling={!state.hasRolled && isMyTurn} />
+          <Die value={state.dice[1]} rolling={!state.hasRolled && isMyTurn} />
+          <div className="ml-2 flex flex-col items-center">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</span>
+            <span className="text-2xl font-black text-text-dark">{state.dice[0] + state.dice[1]}</span>
+          </div>
+        </div>
+
+        <div className="flex gap-3 w-full min-w-[280px]">
+          {!state.hasRolled ? (
+            <Button 
+              onClick={rollDice}
+              disabled={!isMyTurn}
+              className="flex-1 bg-text-dark hover:bg-accent hover:text-text-dark font-black py-8 rounded-2xl shadow-xl transition-all uppercase tracking-widest text-xs gap-2 disabled:opacity-50"
+            >
+              <RotateCcw size={16} />
+              Roll Dice
+            </Button>
+          ) : (
+            <div className="flex-1 flex gap-2">
+              <AnimatePresence mode="wait">
+                {!showConfirm ? (
+                  <motion.div
+                    key="end-btn"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="flex-1"
+                  >
+                    <Button 
+                      onClick={() => setShowConfirm(true)}
+                      disabled={!isMyTurn}
+                      className="w-full bg-accent hover:bg-accent-dark text-text-dark font-black py-8 rounded-2xl shadow-xl transition-all uppercase tracking-widest text-xs gap-2 disabled:opacity-50"
+                    >
+                      <CheckCircle2 size={16} />
+                      End Turn
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="confirm-btns"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="flex-1 flex gap-2"
+                  >
+                    <Button 
+                      onClick={() => setShowConfirm(false)}
+                      variant="outline"
+                      className="flex-1 border-gray-200 hover:bg-gray-50 text-gray-500 font-bold py-8 rounded-2xl text-xs uppercase tracking-widest"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        endTurn();
+                        setShowConfirm(false);
+                      }}
+                      className="flex-[2] bg-green-500 hover:bg-green-600 text-white font-black py-8 rounded-2xl shadow-xl transition-all uppercase tracking-widest text-xs gap-2"
+                    >
+                      Confirm End
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-const Die: React.FC<{ value: number }> = ({ value }) => (
+const Die: React.FC<{ value: number; rolling?: boolean }> = ({ value, rolling }) => (
   <motion.div 
-    whileHover={{ rotate: 5 }}
-    className="w-12 h-12 bg-white rounded-lg shadow-sm flex items-center justify-center border-2 border-text-dark"
+    animate={rolling ? { 
+      rotate: [0, 90, 180, 270, 360],
+      scale: [1, 1.1, 1],
+    } : {}}
+    transition={rolling ? { repeat: Infinity, duration: 0.4 } : {}}
+    className="w-16 h-16 bg-white rounded-2xl shadow-inner flex items-center justify-center border-2 border-gray-100 relative overflow-hidden group"
   >
-    <span className="text-2xl font-bold text-text-dark">{value}</span>
+    <div className="absolute inset-0 bg-gradient-to-br from-white to-gray-50 opacity-50" />
+    <span className="text-3xl font-black text-text-dark relative z-10">{value}</span>
+    
+    {/* Pips for visual flair */}
+    <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-gray-200 rounded-full" />
+    <div className="absolute bottom-1 left-1 w-1.5 h-1.5 bg-gray-200 rounded-full" />
   </motion.div>
 );

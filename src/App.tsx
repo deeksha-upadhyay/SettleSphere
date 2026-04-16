@@ -5,13 +5,16 @@
 
 import { GameUI } from './components/GameUI';
 import { GameProvider } from './contexts/GameContext';
+import { TooltipProvider } from './components/ui/tooltip';
 
 export default function App() {
   return (
-    <GameProvider>
-      <div className="w-full h-screen overflow-hidden">
-        <GameUI />
-      </div>
-    </GameProvider>
+    <TooltipProvider>
+      <GameProvider>
+        <div className="w-full h-screen overflow-hidden">
+          <GameUI />
+        </div>
+      </GameProvider>
+    </TooltipProvider>
   );
 }
