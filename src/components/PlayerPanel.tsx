@@ -7,8 +7,10 @@ import { cn } from '@/lib/utils';
 import { useGame } from '../contexts/GameContext';
 
 export const PlayerPanel: React.FC = () => {
-  const { state } = useGame();
+  const { state, playerId } = useGame();
+  if (!state) return null;
   const players = state.players;
+  const myPlayer = players.find(p => p.id === playerId) || players[0];
 
   return (
     <div className="w-[260px] flex flex-col gap-6 h-full overflow-y-auto p-8 bg-panel border-r border-black/10 shadow-[4px_0_20px_rgba(0,0,0,0.05)] custom-scrollbar z-10">
@@ -41,7 +43,7 @@ export const PlayerPanel: React.FC = () => {
       <div className="mt-auto">
         <h3 className="text-[14px] font-bold text-text-dark/60 uppercase tracking-[1.5px] mb-4">Your Resources</h3>
         <div className="grid grid-cols-3 gap-2">
-          {Object.entries(players[state.currentPlayerIndex].resources).map(([res, count]) => (
+          {Object.entries(myPlayer.resources).map(([res, count]) => (
             res !== 'desert' && (
               <div key={res} className="text-center bg-white/50 p-2 rounded-xl border border-black/5">
                 <div className="text-xl mb-0.5">

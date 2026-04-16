@@ -41,6 +41,8 @@ export interface GameState {
   settlements: Record<string, Settlement>; // key: vertexId
   roads: Record<string, Road>; // key: edgeId
   winner: number | null;
-  gamePhase: 'setup' | 'play' | 'robber';
+  gamePhase: 'waiting' | 'setup' | 'play' | 'robber' | 'discarding';
   setupStep: number; // for initial placement
+  discardingPlayers: number[]; // IDs of players who still need to discard
+  victims: number[]; // IDs of players who can be stolen from
 }

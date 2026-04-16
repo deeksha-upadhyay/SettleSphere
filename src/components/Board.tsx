@@ -43,7 +43,11 @@ export const Board: React.FC = () => {
                   q={tile.q}
                   r={tile.r}
                   isRobber={isRobber}
-                  onMoveRobber={() => moveRobber(tile.id)}
+                  onMoveRobber={() => {
+                    if (isMyTurn && state.gamePhase === 'robber') {
+                      moveRobber(tile.id);
+                    }
+                  }}
                 />
                 
                 {/* Vertices */}

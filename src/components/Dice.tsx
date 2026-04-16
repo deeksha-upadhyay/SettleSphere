@@ -12,6 +12,20 @@ export const Dice: React.FC = () => {
   const currentPlayer = state.players[state.currentPlayerIndex];
   const isMyTurn = currentPlayer.id === playerId;
 
+  if (state.gamePhase === 'setup') {
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <div className="bg-orange-100 px-6 py-3 rounded-full font-bold text-orange-800 shadow-lg text-sm tracking-wider flex items-center gap-2 border border-orange-200">
+          <div className={cn("w-2 h-2 rounded-full animate-pulse", currentPlayer.color)} />
+          {isMyTurn ? "YOUR TURN: PLACE SETTLEMENT & ROAD" : `${currentPlayer.name.toUpperCase()}'S TURN: INITIAL PLACEMENT`}
+        </div>
+        <div className="bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/20 text-xs font-bold text-text-dark/40 uppercase tracking-widest">
+          Setup Phase
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="bg-accent px-6 py-3 rounded-full font-bold text-text-dark shadow-lg text-sm tracking-wider flex items-center gap-2">

@@ -24,6 +24,9 @@ interface GameContextType {
   upgradeToCity: (vertexId: string) => void;
   moveRobber: (tileId: number) => void;
   sendMessage: (message: string) => void;
+  startGame: () => void;
+  discardCards: (resources: Record<ResourceType, number>) => void;
+  stealCard: (targetPlayerId: number) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -129,6 +132,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     socketRef.current?.emit('sendMessage', { roomId, message });
   }, [roomId]);
 
+  const startGame = useCallback(() => {
+    if (!roomId) return;
+    socketRef.current?.emit('startGame', { roomId });
+  }, [roomId]);
+
+  const discardCards = useCallback((resources: Record<ResourceType, number>) => {
+    if (!roomId) return;
+    socketRef.current?.emit('discardCards', { roomId, resources });
+  }, [roomId]);
+
+  const stealCard = useCallback((targetPlayerId: number) => {
+    if (!roomId) return;
+    socketRef.current?.emit('stealCard', { roomId, targetPlayerId });
+  }, [roomId]);
+
   return (
     <GameContext.Provider value={{ 
       state, 
@@ -144,7 +162,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       buildRoad, 
       upgradeToCity, 
       moveRobber,
-      sendMessage
+      sendMessage,
+      startGame,
+      discardCards,
+      stealCard
     }}>
       {children}
     </GameContext.Provider>

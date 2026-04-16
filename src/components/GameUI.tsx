@@ -3,6 +3,9 @@ import { Board } from './Board';
 import { PlayerPanel } from './PlayerPanel';
 import { Dice } from './Dice';
 import { Lobby } from './Lobby';
+import { WaitingRoom } from './WaitingRoom';
+import { DiscardOverlay } from './DiscardOverlay';
+import { StealOverlay } from './StealOverlay';
 import { Chat } from './Chat';
 import { motion } from 'motion/react';
 import { useGame } from '../contexts/GameContext';
@@ -13,6 +16,10 @@ export const GameUI: React.FC = () => {
 
   if (!state) {
     return <Lobby />;
+  }
+
+  if (state.gamePhase === 'waiting') {
+    return <WaitingRoom />;
   }
 
   return (
@@ -39,6 +46,12 @@ export const GameUI: React.FC = () => {
           </motion.div>
         </div>
       )}
+
+      {/* Discard Overlay */}
+      <DiscardOverlay />
+
+      {/* Steal Overlay */}
+      <StealOverlay />
 
       {/* Sidebar */}
       <motion.aside 
