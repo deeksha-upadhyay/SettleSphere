@@ -8,6 +8,7 @@ import { DiscardOverlay } from './DiscardOverlay';
 import { StealOverlay } from './StealOverlay';
 import { Chat } from './Chat';
 import { HowToPlay } from './HowToPlay';
+import { DemoControls } from './DemoControls';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../contexts/GameContext';
 import { Button } from './ui/button';
@@ -28,6 +29,7 @@ export const GameUI: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-sea flex overflow-hidden font-sans text-text-dark relative">
       <Toaster position="top-center" />
+      <DemoControls />
       
       {/* Winner Overlay */}
       {state.winner !== null && (
@@ -81,9 +83,25 @@ export const GameUI: React.FC = () => {
         initial={{ x: -300, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="hidden lg:block"
+        className="hidden lg:flex flex-col gap-4 p-6"
       >
         <PlayerPanel />
+        
+        {/* AI Thinking Indicator */}
+        {state.players[state.currentPlayerIndex].isBot && !state.winner && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-accent text-white p-4 rounded-2xl shadow-lg flex items-center gap-3"
+          >
+            <div className="flex gap-1">
+              <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" />
+              <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0.2s]" />
+              <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0.4s]" />
+            </div>
+            <span className="text-xs font-bold">{state.players[state.currentPlayerIndex].name} is thinking...</span>
+          </motion.div>
+        )}
       </motion.aside>
 
       {/* Main Game Area */}

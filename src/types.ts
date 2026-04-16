@@ -17,6 +17,7 @@ export interface Player {
   roads: number;
   settlements: number;
   cities: number;
+  isBot?: boolean;
 }
 
 export type StructureType = 'settlement' | 'city';

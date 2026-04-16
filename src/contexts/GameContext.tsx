@@ -28,6 +28,11 @@ interface GameContextType {
   startGame: () => void;
   discardCards: (resources: Record<ResourceType, number>) => void;
   stealCard: (targetPlayerId: number) => void;
+  startDemo: () => void;
+  pauseDemo: () => void;
+  resumeDemo: () => void;
+  restartDemo: () => void;
+  setSimulationSpeed: (speed: number) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -161,6 +166,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     socketRef.current?.emit('stealCard', { roomId, targetPlayerId });
   }, [roomId]);
 
+  const startDemo = useCallback(() => {
+    socketRef.current?.emit('startDemo');
+  }, []);
+
+  const pauseDemo = useCallback(() => {
+    if (!roomId) return;
+    socketRef.current?.emit('pauseDemo', { roomId });
+  }, [roomId]);
+
+  const resumeDemo = useCallback(() => {
+    if (!roomId) return;
+    socketRef.current?.emit('resumeDemo', { roomId });
+  }, [roomId]);
+
+  const restartDemo = useCallback(() => {
+    if (!roomId) return;
+    socketRef.current?.emit('restartDemo', { roomId });
+  }, [roomId]);
+
+  const setSimulationSpeed = useCallback((speed: number) => {
+    if (!roomId) return;
+    socketRef.current?.emit('setSimulationSpeed', { roomId, speed });
+  }, [roomId]);
+
   return (
     <GameContext.Provider value={{ 
       state, 
@@ -179,7 +208,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sendMessage,
       startGame,
       discardCards,
-      stealCard
+      stealCard,
+      startDemo,
+      pauseDemo,
+      resumeDemo,
+      restartDemo,
+      setSimulationSpeed
     }}>
       {children}
     </GameContext.Provider>

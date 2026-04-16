@@ -5,8 +5,10 @@ import { motion } from 'motion/react';
 
 import { HowToPlay } from './HowToPlay';
 
+import { Play, Eye } from 'lucide-react';
+
 export const Lobby: React.FC = () => {
-  const { createGame, joinGame } = useGame();
+  const { createGame, joinGame, startDemo } = useGame();
   const [playerName, setPlayerName] = useState('');
   const [roomIdInput, setRoomIdInput] = useState('');
 
@@ -23,6 +25,21 @@ export const Lobby: React.FC = () => {
         </div>
 
         <div className="space-y-4">
+          <Button 
+            onClick={startDemo}
+            variant="outline"
+            className="w-full border-2 border-accent text-text-dark hover:bg-accent/10 py-8 rounded-2xl text-lg font-black uppercase tracking-widest flex gap-3"
+          >
+            <Eye size={24} />
+            Watch AI Game
+          </Button>
+
+          <div className="relative flex items-center gap-4 py-2">
+            <div className="flex-1 h-px bg-gray-100" />
+            <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">or play</span>
+            <div className="flex-1 h-px bg-gray-100" />
+          </div>
+
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block">Your Name</label>
             <input 
@@ -38,8 +55,9 @@ export const Lobby: React.FC = () => {
             <Button 
               onClick={() => playerName && createGame(playerName)}
               disabled={!playerName}
-              className="w-full bg-orange-600 hover:bg-orange-700 text-white py-8 rounded-2xl text-lg font-bold shadow-lg shadow-orange-600/20 disabled:opacity-50"
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white py-8 rounded-2xl text-lg font-bold shadow-lg shadow-orange-600/20 disabled:opacity-50 flex gap-3 items-center justify-center"
             >
+              <Play size={20} />
               Create New Game
             </Button>
 

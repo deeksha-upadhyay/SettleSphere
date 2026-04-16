@@ -13,12 +13,14 @@ import { HelpCircle, Trophy, PlayCircle, Hammer, AlertTriangle, Info } from 'luc
 export const HowToPlay: React.FC = () => {
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2 rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm">
-          <HelpCircle size={18} />
-          How to Play
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger
+        render={
+          <Button variant="outline" className="gap-2 rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm">
+            <HelpCircle size={18} />
+            How to Play
+          </Button>
+        }
+      />
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-[32px] border-none shadow-2xl bg-white p-0">
         <div className="p-8 space-y-8">
           <DialogHeader>

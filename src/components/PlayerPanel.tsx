@@ -8,7 +8,7 @@ export const PlayerPanel: React.FC = () => {
   const { state, playerId } = useGame();
   if (!state) return null;
   const players = state.players;
-  const myPlayer = players.find(p => p.id === playerId) || players[0];
+  const myPlayer = players.find(p => p.id === playerId) || players[state.currentPlayerIndex];
 
   return (
     <div className="w-[300px] flex flex-col gap-8 h-full overflow-y-auto p-8 bg-white/95 backdrop-blur-md border-r border-black/5 shadow-2xl custom-scrollbar z-10">
