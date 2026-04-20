@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { useGame } from '../contexts/GameContext';
 import { cn } from '@/lib/utils';
-import { RotateCcw, Play, CheckCircle2, AlertCircle } from 'lucide-react';
+import { RotateCcw, Play, CheckCircle2, AlertCircle, Home } from 'lucide-react';
 
 export const Dice: React.FC = () => {
   const { state, rollDice: contextRollDice, endTurn, playerId } = useGame();
@@ -31,13 +31,17 @@ export const Dice: React.FC = () => {
         <motion.div 
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="bg-orange-100 px-6 py-3 rounded-full font-bold text-orange-800 shadow-lg text-sm tracking-wider flex items-center gap-2 border border-orange-200"
+          className="bg-orange-500 px-8 py-4 rounded-[28px] font-black text-white shadow-2xl text-base tracking-tighter flex items-center gap-3 border-b-4 border-orange-700 active:translate-y-1 transition-all"
         >
-          <div className={cn("w-2 h-2 rounded-full animate-pulse", currentPlayer.color)} />
-          {isMyTurn ? "YOUR TURN: PLACE SETTLEMENT & ROAD" : `${currentPlayer.name.toUpperCase()}'S TURN: INITIAL PLACEMENT`}
+          <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
+            <Home size={20} />
+          </div>
+          {isMyTurn ? "YOUR TURN: SETTLE THE LAND" : `${currentPlayer.name.toUpperCase()}'S TURN: EXPANDING`}
         </motion.div>
-        <div className="bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/20 text-xs font-bold text-text-dark/40 uppercase tracking-widest">
-          Setup Phase
+        <div className="px-4 py-2 bg-text-dark/5 backdrop-blur-xl rounded-full border border-text-dark/10">
+          <span className="text-[10px] font-black text-text-dark/40 uppercase tracking-[3px]">
+            Phase: Setup
+          </span>
         </div>
       </div>
     );
@@ -74,22 +78,35 @@ export const Dice: React.FC = () => {
 
         <div className="flex gap-3 w-full min-w-[280px]">
           {!state.hasRolled ? (
-            <Button 
-              onClick={handleRollDice}
-              disabled={!isMyTurn || isRolling}
-              className="flex-1 bg-text-dark hover:bg-accent hover:text-text-dark font-black py-8 rounded-2xl shadow-xl transition-all uppercase tracking-widest text-xs gap-2 disabled:opacity-50 relative overflow-hidden"
-            >
-              {isRolling && (
+            <div className="flex-1 relative">
+              {isMyTurn && !isRolling && (
                 <motion.div 
-                  initial={{ x: '-100%' }}
-                  animate={{ x: '100%' }}
-                  transition={{ duration: 1.2, ease: "linear" }}
-                  className="absolute inset-0 bg-white/20"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: [0.2, 0.4, 0.2], scale: [1, 1.1, 1] }}
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  className="absolute inset-0 bg-accent rounded-2xl blur-lg"
                 />
               )}
-              <RotateCcw size={16} className={cn(isRolling && "animate-spin")} />
-              {isRolling ? "Rolling..." : "Roll Dice"}
-            </Button>
+              <Button 
+                onClick={handleRollDice}
+                disabled={!isMyTurn || isRolling}
+                className={cn(
+                  "w-full bg-text-dark hover:bg-accent hover:text-text-dark font-black py-8 rounded-2xl shadow-xl transition-all uppercase tracking-widest text-xs gap-2 disabled:opacity-50 relative overflow-hidden",
+                  isMyTurn && !isRolling && "ring-2 ring-accent/50 animate-pulse"
+                )}
+              >
+                {isRolling && (
+                  <motion.div 
+                    initial={{ x: '-100%' }}
+                    animate={{ x: '100%' }}
+                    transition={{ duration: 1.2, ease: "linear" }}
+                    className="absolute inset-0 bg-white/20"
+                  />
+                )}
+                <RotateCcw size={16} className={cn(isRolling && "animate-spin")} />
+                {isRolling ? "Rolling..." : "Roll Dice"}
+              </Button>
+            </div>
           ) : (
             <div className="flex-1 flex gap-2">
               <AnimatePresence mode="wait">
@@ -148,40 +165,54 @@ export const Dice: React.FC = () => {
 const Die: React.FC<{ value: number; rolling?: boolean }> = ({ value, rolling }) => (
   <motion.div 
     animate={rolling ? { 
-      rotate: [0, 90, 180, 270, 360],
-      scale: [1, 1.1, 1],
-      y: [0, -20, 0],
+      rotate: [0, 15, -15, 30, -30, 360],
+      scale: [1, 1.15, 0.9, 1.2, 1],
+      y: [0, -40, 5, -20, 0],
+      x: [0, 10, -10, 5, 0],
     } : {
       rotate: 0,
       scale: 1,
       y: 0,
+      x: 0,
     }}
     transition={rolling ? { 
       repeat: Infinity, 
-      duration: 0.4,
-      ease: "easeInOut"
+      duration: 0.6,
+      ease: "linear"
     } : {
       type: "spring",
-      stiffness: 260,
-      damping: 20
+      stiffness: 400,
+      damping: 15
     }}
     className="w-16 h-16 bg-white rounded-2xl shadow-inner flex items-center justify-center border-2 border-gray-100 relative overflow-hidden group"
   >
-    <div className="absolute inset-0 bg-gradient-to-br from-white to-gray-50 opacity-50" />
+    <div className="absolute inset-0 bg-gradient-to-br from-white to-gray-100 opacity-50" />
     <AnimatePresence mode="wait">
-      <motion.span 
+      <motion.div 
         key={value}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
+        initial={{ opacity: 0, scale: 0.5, rotate: -45 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        exit={{ opacity: 0, scale: 1.5, rotate: 45 }}
+        transition={{ type: "spring", stiffness: 500, damping: 20 }}
         className="text-3xl font-black text-text-dark relative z-10"
       >
         {value}
-      </motion.span>
+      </motion.div>
     </AnimatePresence>
     
-    {/* Pips for visual flair */}
-    <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-gray-200 rounded-full" />
-    <div className="absolute bottom-1 left-1 w-1.5 h-1.5 bg-gray-200 rounded-full" />
+    {!rolling && (
+      <motion.div 
+        initial={{ opacity: 1, scale: 1 }}
+        animate={{ opacity: 0, scale: 2 }}
+        transition={{ duration: 0.5 }}
+        className="absolute inset-0 bg-accent/30 rounded-2xl z-0"
+      />
+    )}
+
+    {/* Pips for visual style */}
+    <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-gray-200 rounded-full" />
+    <div className="absolute bottom-1.5 left-1.5 w-1.5 h-1.5 bg-gray-200 rounded-full" />
+    <div className="absolute top-1.5 left-1.5 w-1 h-1 bg-gray-100 rounded-full" />
+    <div className="absolute bottom-1.5 right-1.5 w-1 h-1 bg-gray-100 rounded-full" />
   </motion.div>
 );

@@ -83,11 +83,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (prev && newState.logs.length > prev.logs.length) {
           const newLogs = newState.logs.slice(prev.logs.length);
           newLogs.forEach(log => {
-            if (log.includes('rolled')) toast(log, { icon: '🎲' });
-            else if (log.includes('built')) toast(log, { icon: '🏠' });
-            else if (log.includes('stole')) toast(log, { icon: '🕵️' });
-            else if (log.includes('joined')) toast(log, { icon: '👋' });
-            else toast(log);
+            if (log.includes('victory') || log.includes('wins')) {
+              toast.success(log, { icon: '🏆', duration: 5000 });
+            } else if (log.includes('rolled')) {
+              toast(log, { icon: '🎲' });
+            } else if (log.includes('built')) {
+              toast.success(log, { icon: '🏠' });
+            } else if (log.includes('stole') || log.includes('Robber')) {
+              toast.warning(log, { icon: '🕵️' });
+            } else if (log.includes('joined')) {
+              toast.info(log, { icon: '👋' });
+            } else {
+              toast(log);
+            }
           });
         }
         return newState;

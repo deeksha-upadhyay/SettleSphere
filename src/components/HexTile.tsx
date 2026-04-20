@@ -61,15 +61,22 @@ export const HexTile: React.FC<HexTileProps> = ({ id, type, number, q, r, classN
             {/* Hexagon Shape */}
             <motion.div 
               animate={isProducing ? {
-                filter: ['brightness(1)', 'brightness(1.5)', 'brightness(1)'],
-                scale: [1, 1.02, 1],
+                filter: ['brightness(1)', 'brightness(1.8)', 'brightness(1)'],
+                scale: [1, 1.05, 1],
               } : {}}
-              transition={{ duration: 0.5, repeat: isProducing ? 3 : 0 }}
+              transition={{ duration: 0.6, repeat: isProducing ? 2 : 0, ease: "easeInOut" }}
               className={cn(
-                "absolute inset-0 w-full h-full clip-hex shadow-inner transition-shadow duration-300",
+                "absolute inset-0 w-full h-full clip-hex shadow-[inset_0_0_20px_rgba(0,0,0,0.2)] transition-shadow duration-300",
                 info.bg,
                 isRobber && "brightness-50"
               )}
+            />
+
+            {/* Hover Glow Ring */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              className="absolute inset-[2px] w-[calc(100%-4px)] h-[calc(100%-4px)] clip-hex border-2 border-white/40 z-20 pointer-events-none"
             />
 
             {/* Production Glow */}

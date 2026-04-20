@@ -14,6 +14,7 @@ import { useGame } from '../contexts/GameContext';
 import { Button } from './ui/button';
 import { Toaster } from './ui/sonner';
 import { ScrollText, History, Trophy, PartyPopper } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export const GameUI: React.FC = () => {
   const { state, roomId, playerId } = useGame();
@@ -48,20 +49,47 @@ export const GameUI: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-sea flex overflow-hidden font-sans text-text-dark relative">
-      <Toaster position="top-center" />
+      <Toaster position="top-right" closeButton richColors />
       <DemoControls />
 
       {/* Your Turn Overlay */}
       <AnimatePresence>
         {showYourTurn && (
           <motion.div
-            initial={{ scale: 0.5, opacity: 0, y: -50 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 1.5, opacity: 0, y: 50 }}
-            className="fixed inset-0 z-[110] flex items-center justify-center pointer-events-none"
+            initial={{ scale: 0.5, opacity: 0, y: -100, rotateX: 45 }}
+            animate={{ 
+              scale: 1, 
+              opacity: 1, 
+              y: 0, 
+              rotateX: 0,
+              boxShadow: ['0 0 20px rgba(244,208,63,0)', '0 0 50px rgba(244,208,63,0.6)', '0 0 20px rgba(244,208,63,0)']
+            }}
+            exit={{ scale: 1.5, opacity: 0, y: 100, rotateX: -45 }}
+            transition={{ 
+              type: "spring", 
+              stiffness: 400, 
+              damping: 15,
+              boxShadow: { repeat: Infinity, duration: 1.5 }
+            }}
+            className="fixed inset-0 z-[110] flex items-center justify-center pointer-events-none perspective-1000"
           >
-            <div className="bg-accent text-text-dark px-12 py-6 rounded-[40px] shadow-2xl border-4 border-white/50 backdrop-blur-md">
-              <h2 className="text-6xl font-black uppercase tracking-tighter italic">Your Turn!</h2>
+            <div className="relative">
+              <div className="bg-accent text-text-dark px-16 py-8 rounded-[48px] shadow-2xl border-4 border-white/60 backdrop-blur-md overflow-hidden">
+                <motion.div 
+                  animate={{ x: ['-100%', '200%'] }}
+                  transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-20"
+                />
+                <h2 className="text-7xl font-black uppercase tracking-tighter italic relative z-10 drop-shadow-lg">Your Turn!</h2>
+              </div>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ repeat: Infinity, duration: 1 }}
+                className="absolute -top-4 -right-4 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-xl border-2 border-accent"
+              >
+                <PartyPopper size={24} className="text-accent" />
+              </motion.div>
             </div>
           </motion.div>
         )}
@@ -226,11 +254,18 @@ export const GameUI: React.FC = () => {
             {state.logs.slice().reverse().map((log, i) => (
               <motion.div
                 key={`${i}-${log}`}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="text-[13px] font-medium text-text-dark/80 bg-white p-3 rounded-xl border border-black/5 shadow-sm"
+                initial={{ opacity: 0, x: 20, scale: 0.9 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                className={cn(
+                  "text-[13px] font-medium p-3 rounded-xl border border-black/5 shadow-sm transition-all hover:scale-[1.02]",
+                  log.includes("wins") || log.includes("Victory") ? "bg-accent/20 border-accent/30 text-text-dark font-black" : "bg-white text-text-dark/80"
+                )}
               >
-                {log}
+                <div className="flex gap-2">
+                  <span className="text-gray-400 font-mono text-[10px] mt-0.5">{state.logs.length - i}</span>
+                  <span>{log}</span>
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>

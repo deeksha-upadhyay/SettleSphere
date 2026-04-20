@@ -89,10 +89,26 @@ export const Board: React.FC = () => {
                   return (
                     <motion.div
                       key={vId}
-                      initial={settlement ? { scale: 0, opacity: 0 } : false}
-                      animate={settlement ? { scale: 1, opacity: 1 } : { opacity: isValidBuild ? 1 : 0 }}
-                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                      whileHover={isMyTurn ? { scale: 1.2 } : {}}
+                      initial={settlement ? { scale: 0, opacity: 0, rotate: -45 } : false}
+                      animate={settlement ? { 
+                        scale: settlement.type === 'city' ? 1.25 : 1, 
+                        opacity: 1, 
+                        rotate: 0,
+                        boxShadow: ['0 0 0px rgba(255,255,255,0)', '0 0 20px rgba(255,255,255,0.8)', '0 0 0px rgba(255,255,255,0)']
+                      } : { 
+                        opacity: isValidBuild ? 1 : 0,
+                        scale: isValidBuild ? [1, 1.15, 1] : 1
+                      }}
+                      transition={settlement ? { 
+                        type: "spring", 
+                        stiffness: 400, 
+                        damping: 15,
+                        boxShadow: { duration: 1, times: [0, 0.5, 1] }
+                      } : { 
+                        opacity: { duration: 0.2 },
+                        scale: isValidBuild ? { repeat: Infinity, duration: 1.5, ease: "easeInOut" } : { duration: 0.2 }
+                      }}
+                      whileHover={isMyTurn && isValidBuild ? { scale: 1.3, zIndex: 40 } : {}}
                       onClick={() => {
                         if (!isMyTurn) return;
                         if (state.gamePhase === 'setup') {
@@ -106,10 +122,10 @@ export const Board: React.FC = () => {
                         "absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 z-30 rounded-full flex items-center justify-center transition-all",
                         isMyTurn ? "cursor-pointer" : "cursor-default",
                         settlement 
-                          ? cn(owner?.color, settlement.type === 'city' ? "rounded-sm scale-125 shadow-[0_0_15px_rgba(255,255,255,0.5)]" : "rounded-full shadow-lg")
+                          ? cn(owner?.color, settlement.type === 'city' ? "rounded-sm shadow-xl" : "rounded-full shadow-lg")
                           : cn(
-                              "bg-white/20 border border-white/30",
-                              isValidBuild && "bg-white/40 border-accent shadow-[0_0_10px_rgba(255,255,255,0.8)] ring-2 ring-accent/50 ring-offset-1 animate-pulse scale-110"
+                              "bg-white/30 border border-white/50 backdrop-blur-sm",
+                              isValidBuild && "border-accent ring-2 ring-accent/50 ring-offset-2 shadow-[0_0_15px_rgba(255,215,0,0.4)]"
                             ),
                         canUpgrade && "ring-4 ring-accent ring-offset-2 shadow-[0_0_20px_rgba(255,215,0,0.6)]"
                       )}
@@ -159,8 +175,22 @@ export const Board: React.FC = () => {
                     <motion.div
                       key={eId}
                       initial={road ? { scaleX: 0, opacity: 0 } : false}
-                      animate={road ? { scaleX: 1, opacity: 1 } : { opacity: isValidRoad ? 1 : 0 }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      animate={road ? { 
+                        scaleX: 1, 
+                        opacity: 1,
+                        filter: ['brightness(1)', 'brightness(2)', 'brightness(1)']
+                      } : { 
+                        opacity: isValidRoad ? 1 : 0,
+                        scaleY: isValidRoad ? [1, 1.3, 1] : 1
+                      }}
+                      transition={road ? { 
+                        duration: 0.6, 
+                        ease: "circOut",
+                        filter: { duration: 0.8, times: [0, 0.2, 1] }
+                      } : {
+                        opacity: { duration: 0.2 },
+                        scaleY: isValidRoad ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : { duration: 0.2 }
+                      }}
                       onClick={() => {
                         if (!isMyTurn) return;
                         if (state.gamePhase === 'setup') {
@@ -179,10 +209,10 @@ export const Board: React.FC = () => {
                         "absolute w-10 h-2 z-20 transition-all",
                         isMyTurn ? "cursor-pointer" : "cursor-default",
                         road 
-                          ? cn(owner?.color, "h-3 shadow-md border border-white/20")
+                          ? cn(owner?.color, "h-3 shadow-lg border border-white/30")
                           : cn(
-                              "bg-white/10 border border-white/20",
-                              isValidRoad && "bg-white/30 border-accent shadow-[0_0_8px_rgba(255,255,255,0.5)] ring-1 ring-accent/30 animate-pulse h-3"
+                              "bg-white/20 border border-white/30 backdrop-blur-sm",
+                              isValidRoad && "bg-white/40 border-accent shadow-[0_0_10px_rgba(255,215,0,0.3)] ring-1 ring-accent/40"
                             )
                       )}
                     />

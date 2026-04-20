@@ -27,9 +27,9 @@ export const PlayerPanel: React.FC = () => {
                 key={player.id} 
                 initial={false}
                 animate={isCurrent ? {
-                  scale: 1.02,
+                  scale: 1.05,
                   borderColor: '#F4D03F',
-                  boxShadow: '0 0 20px rgba(244, 208, 63, 0.3)',
+                  boxShadow: ['0 0 10px rgba(244, 208, 63, 0.2)', '0 0 25px rgba(244, 208, 63, 0.5)', '0 0 10px rgba(244, 208, 63, 0.2)'],
                   opacity: 1,
                   filter: 'grayscale(0)'
                 } : {
@@ -39,6 +39,10 @@ export const PlayerPanel: React.FC = () => {
                   opacity: 0.6,
                   filter: 'grayscale(0.5)'
                 }}
+                transition={isCurrent ? {
+                  boxShadow: { repeat: Infinity, duration: 2, ease: "easeInOut" },
+                  default: { type: "spring", stiffness: 300, damping: 20 }
+                } : { duration: 0.5 }}
                 className={cn(
                   "p-5 rounded-[24px] transition-all duration-500 border relative overflow-hidden",
                   isCurrent ? "bg-white z-10" : "bg-gray-50/50"
