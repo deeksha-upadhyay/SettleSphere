@@ -9,7 +9,7 @@ interface RoadViewProps {
   owner: Player | null;
   isValidRoad: boolean;
   isMyTurn: boolean;
-  onClick: () => void;
+  onClick: (eId: string) => void;
   style: React.CSSProperties;
 }
 
@@ -35,7 +35,7 @@ export const RoadView: React.FC<RoadViewProps> = React.memo(({
         opacity: { duration: 0.2 },
         scaleY: isValidRoad ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : { duration: 0.2 }
       }}
-      onClick={onClick}
+      onClick={() => (isValidRoad || road) && onClick(eId)}
       style={style}
       className={cn(
         "absolute w-10 h-2 z-20 transition-all",

@@ -35,6 +35,15 @@ interface Room {
 }
 
 const rooms: Record<string, Room> = {};
+let socketIo: Server | null = null;
+
+function emitGameState(roomId: string) {
+  if (!socketIo) return;
+  const room = rooms[roomId];
+  if (!room) return;
+  room.state.version++;
+  socketIo.to(roomId).emit("gameStateUpdate", room.state);
+}
 
 function getAllVertices(tiles: TileData[]) {
   const vertices = new Set<string>();
@@ -258,7 +267,7 @@ function runAiTurn(roomId: string, io: Server) {
       state.winner = player.id;
     }
 
-    io.to(roomId).emit("gameStateUpdate", state);
+    emitGameState(roomId);
     if (!state.winner) {
       runAiTurn(roomId, io);
     }
@@ -281,6 +290,7 @@ async function startServer() {
       methods: ["GET", "POST"]
     }
   });
+  socketIo = io;
 
   app.use(cors());
   app.use(express.json());
@@ -315,6 +325,7 @@ async function startServer() {
         discardingPlayers: [],
         victims: [],
         logs: ["Game created. Waiting for players..."],
+        version: 0,
       };
 
       rooms[roomId] = {
@@ -354,6 +365,7 @@ async function startServer() {
         discardingPlayers: [],
         victims: [],
         logs: ["AI Demo Game Started."],
+        version: 0,
       };
 
       rooms[roomId] = {
@@ -376,7 +388,7 @@ async function startServer() {
       if (room && room.isDemo) {
         room.isPaused = true;
         addLog(room, "Simulation paused.");
-        io.to(roomId).emit("gameStateUpdate", room.state);
+        emitGameState(roomId);
       }
     });
 
@@ -385,7 +397,7 @@ async function startServer() {
       if (room && room.isDemo) {
         room.isPaused = false;
         addLog(room, "Simulation resumed.");
-        io.to(roomId).emit("gameStateUpdate", room.state);
+        emitGameState(roomId);
         runAiTurn(roomId, io);
       }
     });
@@ -410,7 +422,7 @@ async function startServer() {
           p.settlements = 0;
           p.cities = 0;
         });
-        io.to(roomId).emit("gameStateUpdate", room.state);
+        emitGameState(roomId);
         runAiTurn(roomId, io);
       }
     });
@@ -420,7 +432,7 @@ async function startServer() {
       if (room && room.isDemo) {
         room.simulationSpeed = speed;
         addLog(room, `Simulation speed set to ${speed}ms.`);
-        io.to(roomId).emit("gameStateUpdate", room.state);
+        emitGameState(roomId);
       }
     });
 
@@ -467,7 +479,7 @@ async function startServer() {
 
       socket.join(roomId);
       socket.emit("gameJoined", { roomId, state: room.state, tiles: room.tiles, playerId, playerName });
-      io.to(roomId).emit("gameStateUpdate", room.state);
+      emitGameState(roomId);
     });
 
     socket.on("startGame", ({ roomId }) => {
@@ -484,7 +496,7 @@ async function startServer() {
       addLog(room, "Game started! Setup phase begins.");
       room.state.currentPlayerIndex = 0;
       room.state.setupStep = 0;
-      io.to(roomId).emit("gameStateUpdate", room.state);
+      emitGameState(roomId);
     });
 
     socket.on("rollDice", ({ roomId }) => {
@@ -537,7 +549,7 @@ async function startServer() {
         room.state.players = updatedPlayers;
       }
 
-      io.to(roomId).emit("gameStateUpdate", room.state);
+      emitGameState(roomId);
     });
 
     socket.on("discardCards", ({ roomId, resources }) => {
@@ -572,7 +584,7 @@ async function startServer() {
         room.state.gamePhase = 'robber';
       }
 
-      io.to(roomId).emit("gameStateUpdate", room.state);
+      emitGameState(roomId);
     });
 
     socket.on("buildSettlement", ({ roomId, vertexId }) => {
@@ -652,7 +664,7 @@ async function startServer() {
         room.state.winner = player.id;
       }
 
-      io.to(roomId).emit("gameStateUpdate", room.state);
+      emitGameState(roomId);
     });
 
     socket.on("buildRoad", ({ roomId, edgeId }) => {
@@ -705,7 +717,7 @@ async function startServer() {
         addLog(room, `${player.name} built a road.`);
       }
 
-      io.to(roomId).emit("gameStateUpdate", room.state);
+      emitGameState(roomId);
     });
 
     socket.on("upgradeToCity", ({ roomId, vertexId }) => {
@@ -740,7 +752,7 @@ async function startServer() {
         room.state.winner = player.id;
       }
 
-      io.to(roomId).emit("gameStateUpdate", room.state);
+      emitGameState(roomId);
     });
 
     socket.on("moveRobber", ({ roomId, tileId }) => {
@@ -780,7 +792,7 @@ async function startServer() {
         room.state.victims = [];
       }
 
-      io.to(roomId).emit("gameStateUpdate", room.state);
+      emitGameState(roomId);
     });
 
     socket.on("endTurn", ({ roomId }) => {
@@ -797,7 +809,7 @@ async function startServer() {
       room.state.gamePhase = 'play';
       addLog(room, `${player.name} ended their turn.`);
 
-      io.to(roomId).emit("gameStateUpdate", room.state);
+      emitGameState(roomId);
     });
 
     socket.on("sendMessage", ({ roomId, message }) => {
@@ -843,7 +855,7 @@ async function startServer() {
 
       room.state.gamePhase = 'play';
       room.state.victims = [];
-      io.to(roomId).emit("gameStateUpdate", room.state);
+      emitGameState(roomId);
     });
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);

@@ -159,13 +159,14 @@ export const Board: React.FC = () => {
             return (
               <div key={`tile-${tile.id}`} className="relative mx-[2px]">
                 <HexTile 
+                  key={tile.id}
                   id={tile.id}
                   type={tile.type} 
                   number={tile.number} 
                   q={tile.q}
                   r={tile.r}
                   isRobber={isRobber}
-                  onMoveRobber={() => handleMoveRobber(tile.id)}
+                  onMoveRobber={handleMoveRobber}
                 />
                 
                 {/* Vertices */}
@@ -188,7 +189,7 @@ export const Board: React.FC = () => {
                       isValidBuild={isValidBuild}
                       canUpgrade={canUpgrade || false}
                       isMyTurn={isMyTurn}
-                      onClick={() => handleSettlementClick(vId, settlement || null)}
+                      onClick={handleSettlementClick}
                       style={boardLayout.vertexStyles[vIndex]}
                     />
                   );
@@ -214,7 +215,7 @@ export const Board: React.FC = () => {
                       owner={owner || null}
                       isValidRoad={isValidRoad}
                       isMyTurn={isMyTurn}
-                      onClick={() => handleRoadClick(eId)}
+                      onClick={handleRoadClick}
                       style={{ 
                         top: styles.top, 
                         left: styles.left, 

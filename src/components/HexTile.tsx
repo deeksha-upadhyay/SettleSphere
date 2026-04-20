@@ -17,7 +17,7 @@ interface HexTileProps {
   r: number;
   className?: string;
   isRobber?: boolean;
-  onMoveRobber?: () => void;
+  onMoveRobber?: (id: number) => void;
 }
 
 const resourceInfo: Record<ResourceType, { bg: string; text: string; icon: string; label: string; color: string }> = {
@@ -51,7 +51,7 @@ export const HexTile: React.FC<HexTileProps> = React.memo(({ id, type, number, q
           <motion.div
             whileHover={{ scale: 1.05, zIndex: 10 }}
             whileTap={{ scale: 0.95 }}
-            onClick={onMoveRobber}
+            onClick={() => onMoveRobber?.(id)}
             className={cn(
               "relative w-[120px] h-[138px] flex items-center justify-center cursor-pointer transition-all duration-300",
               className

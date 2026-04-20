@@ -10,7 +10,7 @@ interface SettlementViewProps {
   isValidBuild: boolean;
   canUpgrade: boolean;
   isMyTurn: boolean;
-  onClick: () => void;
+  onClick: (vId: string, settlement: Settlement | null) => void;
   style: React.CSSProperties;
 }
 
@@ -39,7 +39,7 @@ export const SettlementView: React.FC<SettlementViewProps> = React.memo(({
         scale: isValidBuild ? { repeat: Infinity, duration: 1.5, ease: "easeInOut" } : { duration: 0.2 }
       }}
       whileHover={isMyTurn && isValidBuild ? { scale: 1.3, zIndex: 40 } : {}}
-      onClick={onClick}
+      onClick={() => (isValidBuild || canUpgrade) && onClick(vId, settlement)}
       style={style}
       className={cn(
         "absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 z-30 rounded-full flex items-center justify-center transition-all",
