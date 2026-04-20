@@ -6,7 +6,6 @@ import { useGame } from '../contexts/GameContext';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
 
@@ -30,7 +29,7 @@ const resourceInfo: Record<ResourceType, { bg: string; text: string; icon: strin
   desert: { bg: 'bg-desert', text: 'text-text-dark', icon: '🏜️', label: 'Desert', color: '#EDC9AF' },
 };
 
-export const HexTile: React.FC<HexTileProps> = ({ id, type, number, q, r, className, isRobber, onMoveRobber }) => {
+export const HexTile: React.FC<HexTileProps> = React.memo(({ id, type, number, q, r, className, isRobber, onMoveRobber }) => {
   const { state } = useGame();
   const info = resourceInfo[type];
   const [isProducing, setIsProducing] = useState(false);
@@ -98,7 +97,7 @@ export const HexTile: React.FC<HexTileProps> = ({ id, type, number, q, r, classN
                   >
                     <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-xl border border-white/50 flex items-center gap-1">
                       <span className="text-lg">{info.icon}</span>
-                      <span className="text-sm font-black text-green-600">+{state?.players.find(p => p.id === state.currentPlayerIndex)?.id === state?.currentPlayerIndex ? '1' : '1'}</span>
+                      <span className="text-sm font-black text-green-600">+1</span>
                     </div>
                   </motion.div>
                 </>
@@ -162,4 +161,6 @@ export const HexTile: React.FC<HexTileProps> = ({ id, type, number, q, r, classN
       </TooltipContent>
     </Tooltip>
   );
-};
+});
+
+HexTile.displayName = 'HexTile';

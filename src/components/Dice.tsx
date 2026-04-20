@@ -162,7 +162,7 @@ export const Dice: React.FC = () => {
   );
 };
 
-const Die: React.FC<{ value: number; rolling?: boolean }> = ({ value, rolling }) => (
+const Die: React.FC<{ value: number; rolling?: boolean }> = React.memo(({ value, rolling }) => (
   <motion.div 
     animate={rolling ? { 
       rotate: [0, 15, -15, 30, -30, 360],
@@ -215,4 +215,6 @@ const Die: React.FC<{ value: number; rolling?: boolean }> = ({ value, rolling })
     <div className="absolute top-1.5 left-1.5 w-1 h-1 bg-gray-100 rounded-full" />
     <div className="absolute bottom-1.5 right-1.5 w-1 h-1 bg-gray-100 rounded-full" />
   </motion.div>
-);
+));
+
+Die.displayName = 'Die';

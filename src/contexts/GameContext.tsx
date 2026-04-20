@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { GameState, Player, ResourceType, TileData, Settlement, Road, StructureType } from '../types';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
@@ -198,31 +198,56 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     socketRef.current?.emit('setSimulationSpeed', { roomId, speed });
   }, [roomId]);
 
+  const value = useMemo(() => ({ 
+    state, 
+    playerId,
+    roomId,
+    tiles,
+    messages,
+    createGame,
+    joinGame,
+    rollDice, 
+    endTurn, 
+    buildSettlement, 
+    buildRoad, 
+    upgradeToCity, 
+    moveRobber,
+    sendMessage,
+    startGame,
+    discardCards,
+    stealCard,
+    startDemo,
+    pauseDemo,
+    resumeDemo,
+    restartDemo,
+    setSimulationSpeed
+  }), [
+    state, 
+    playerId, 
+    roomId, 
+    tiles, 
+    messages, 
+    createGame, 
+    joinGame, 
+    rollDice, 
+    endTurn, 
+    buildSettlement, 
+    buildRoad, 
+    upgradeToCity, 
+    moveRobber, 
+    sendMessage, 
+    startGame, 
+    discardCards, 
+    stealCard, 
+    startDemo, 
+    pauseDemo, 
+    resumeDemo, 
+    restartDemo, 
+    setSimulationSpeed
+  ]);
+
   return (
-    <GameContext.Provider value={{ 
-      state, 
-      playerId,
-      roomId,
-      tiles,
-      messages,
-      createGame,
-      joinGame,
-      rollDice, 
-      endTurn, 
-      buildSettlement, 
-      buildRoad, 
-      upgradeToCity, 
-      moveRobber,
-      sendMessage,
-      startGame,
-      discardCards,
-      stealCard,
-      startDemo,
-      pauseDemo,
-      resumeDemo,
-      restartDemo,
-      setSimulationSpeed
-    }}>
+    <GameContext.Provider value={value}>
       {children}
     </GameContext.Provider>
   );
