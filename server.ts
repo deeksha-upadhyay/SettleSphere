@@ -12,7 +12,8 @@ import { getTileAt, getCanonicalVertexId, getCanonicalEdgeId } from "./src/lib/g
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const initialTiles = JSON.parse(fs.readFileSync(path.join(__dirname, "src/data/tiles.json"), "utf-8")) as TileData[];
+import initialTiles from "./src/data/tiles.json" with { type: "json" };
+// const initialTiles = JSON.parse(fs.readFileSync(path.join(__dirname, "src/data/tiles.json"), "utf-8")) as TileData[];
 
 const INITIAL_RESOURCES: Record<ResourceType, number> = {
   wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0, desert: 0
@@ -881,17 +882,20 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.resolve(__dirname, 'dist');
+    const distPath = path.resolve(process.cwd(), 'dist');
+    const indexPath = path.resolve(distPath, 'index.html');
+    
     console.log(`[Server] Starting in PRODUCTION mode`);
     console.log(`[Server] Serving static assets from: ${distPath}`);
+    console.log(`[Server] Index file path: ${indexPath}`);
+    console.log(`[Server] Index file exists: ${fs.existsSync(indexPath)}`);
     
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      const indexPath = path.join(distPath, 'index.html');
       res.sendFile(indexPath, (err) => {
         if (err) {
           console.error(`[Server] Error sending index.html: ${err.message}`);
-          res.status(404).send("Application files could not be found. Please wait for the build to complete and try again.");
+          res.status(404).send("Application files could not be found. Please wait for a few moments for the build to complete and refresh the page.");
         }
       });
     });
