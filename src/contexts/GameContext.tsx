@@ -10,12 +10,7 @@ interface ChatMessage {
   timestamp: string;
 }
 
-interface GameContextType {
-  state: GameState | null;
-  playerId: number | null;
-  roomId: string | null;
-  tiles: TileData[];
-  messages: ChatMessage[];
+interface GameActionsType {
   createGame: (playerName: string) => void;
   joinGame: (roomId: string, playerName: string) => void;
   rollDice: () => void;
@@ -35,7 +30,21 @@ interface GameContextType {
   setSimulationSpeed: (speed: number) => void;
 }
 
-const GameContext = createContext<GameContextType | undefined>(undefined);
+interface GameStateContextType {
+  state: GameState | null;
+  playerId: number | null;
+  roomId: string | null;
+  tiles: TileData[];
+}
+
+interface ActivityContextType {
+  messages: ChatMessage[];
+  logs: string[];
+}
+
+const GameStateContext = createContext<GameStateContextType | undefined>(undefined);
+const GameActionsContext = createContext<GameActionsType | undefined>(undefined);
+const ActivityContext = createContext<ActivityContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<GameState | null>(null);
@@ -43,6 +52,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [playerId, setPlayerId] = useState<number | null>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [logs, setLogs] = useState<string[]>([]);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -63,6 +73,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setState(state);
       setTiles(tiles);
       setPlayerId(playerId);
+      if (state.logs) setLogs(state.logs);
       localStorage.setItem('katan_roomId', roomId);
       localStorage.setItem('katan_playerId', playerId.toString());
       localStorage.setItem('katan_playerName', playerName);
@@ -73,6 +84,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setState(state);
       setTiles(tiles);
       setPlayerId(playerId);
+      if (state.logs) setLogs(state.logs);
       localStorage.setItem('katan_roomId', roomId);
       localStorage.setItem('katan_playerId', playerId.toString());
       localStorage.setItem('katan_playerName', playerName);
@@ -80,26 +92,41 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     socket.on('gameStateUpdate', (newState: GameState) => {
       setState(prev => {
-        if (prev && newState.logs.length > prev.logs.length) {
-          const newLogs = newState.logs.slice(prev.logs.length);
-          newLogs.forEach(log => {
-            if (log.includes('victory') || log.includes('wins')) {
-              toast.success(log, { icon: '🏆', duration: 5000 });
-            } else if (log.includes('rolled')) {
-              toast(log, { icon: '🎲' });
-            } else if (log.includes('built')) {
-              toast.success(log, { icon: '🏠' });
-            } else if (log.includes('stole') || log.includes('Robber')) {
-              toast.warning(log, { icon: '🕵️' });
-            } else if (log.includes('joined')) {
-              toast.info(log, { icon: '👋' });
-            } else {
-              toast(log);
-            }
-          });
+        // Optimization: only update if version is newer
+        if (prev && newState.version <= prev.version) return prev;
+        
+        // Merge logs if they exist (usually won't in optimized updates)
+        if (newState.logs) {
+          setLogs(newState.logs);
         }
-        return newState;
+        
+        return {
+          ...newState,
+          logs: prev?.logs || newState.logs || []
+        };
       });
+    });
+
+    socket.on('newLog', (log: string) => {
+      setLogs(prev => {
+        const next = [...prev, log];
+        if (next.length > 50) next.shift();
+        return next;
+      });
+
+      if (log.includes('victory') || log.includes('wins')) {
+        toast.success(log, { icon: '🏆', duration: 5000 });
+      } else if (log.includes('rolled')) {
+        toast(log, { icon: '🎲' });
+      } else if (log.includes('built')) {
+        toast.success(log, { icon: '🏠' });
+      } else if (log.includes('stole') || log.includes('Robber')) {
+        toast.warning(log, { icon: '🕵️' });
+      } else if (log.includes('joined')) {
+        toast.info(log, { icon: '👋' });
+      } else {
+        toast(log);
+      }
     });
 
     socket.on('newMessage', (msg: ChatMessage) => {
@@ -198,12 +225,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     socketRef.current?.emit('setSimulationSpeed', { roomId, speed });
   }, [roomId]);
 
-  const value = useMemo(() => ({ 
+  const stateValue = useMemo(() => ({ 
     state, 
     playerId,
     roomId,
     tiles,
+  }), [state, playerId, roomId, tiles]);
+
+  const activityValue = useMemo(() => ({
     messages,
+    logs
+  }), [messages, logs]);
+
+  const actionValue = useMemo(() => ({
     createGame,
     joinGame,
     rollDice, 
@@ -222,11 +256,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     restartDemo,
     setSimulationSpeed
   }), [
-    state, 
-    playerId, 
-    roomId, 
-    tiles, 
-    messages, 
     createGame, 
     joinGame, 
     rollDice, 
@@ -247,14 +276,38 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ]);
 
   return (
-    <GameContext.Provider value={value}>
-      {children}
-    </GameContext.Provider>
+    <GameStateContext.Provider value={stateValue}>
+      <ActivityContext.Provider value={activityValue}>
+        <GameActionsContext.Provider value={actionValue}>
+          {children}
+        </GameActionsContext.Provider>
+      </ActivityContext.Provider>
+    </GameStateContext.Provider>
   );
 };
 
-export const useGame = () => {
-  const context = useContext(GameContext);
-  if (!context) throw new Error('useGame must be used within a GameProvider');
+export const useGameState = () => {
+  const context = useContext(GameStateContext);
+  if (!context) throw new Error('useGameState must be used within a GameProvider');
   return context;
+};
+
+export const useActivity = () => {
+  const context = useContext(ActivityContext);
+  if (!context) throw new Error('useActivity must be used within a GameProvider');
+  return context;
+};
+
+export const useGameActions = () => {
+  const context = useContext(GameActionsContext);
+  if (!context) throw new Error('useGameActions must be used within a GameProvider');
+  return context;
+};
+
+// Backward compatibility or for common usage
+export const useGame = () => {
+  const state = useGameState();
+  const activity = useActivity();
+  const actions = useGameActions();
+  return useMemo(() => ({ ...state, ...activity, ...actions }), [state, activity, actions]);
 };

@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useGame } from '../contexts/GameContext';
+import { useActivity, useGameActions } from '../contexts/GameContext';
 import { Button } from './ui/button';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, MessageSquare, X } from 'lucide-react';
 
 export const Chat: React.FC = () => {
-  const { messages, sendMessage } = useGame();
+  const { messages } = useActivity();
+  const { sendMessage } = useGameActions();
   const [input, setInput] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);

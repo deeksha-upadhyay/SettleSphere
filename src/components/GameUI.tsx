@@ -11,14 +11,15 @@ import { HowToPlay } from './HowToPlay';
 import { DemoControls } from './DemoControls';
 import { ActivityLog } from './ActivityLog';
 import { motion, AnimatePresence } from 'motion/react';
-import { useGame } from '../contexts/GameContext';
+import { useGameState, useActivity } from '../contexts/GameContext';
 import { Button } from './ui/button';
 import { Toaster } from './ui/sonner';
 import { ScrollText, History, Trophy, PartyPopper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export const GameUI: React.FC = () => {
-  const { state, roomId, playerId } = useGame();
+export const GameUI: React.FC = React.memo(() => {
+  const { state, roomId, playerId } = useGameState();
+  const { logs } = useActivity();
   const [showYourTurn, setShowYourTurn] = React.useState(false);
   const [showRobberAlert, setShowRobberAlert] = React.useState(false);
 
@@ -241,7 +242,9 @@ export const GameUI: React.FC = () => {
       </main>
 
       {/* Activity Log - Right Sidebar (Hidden on small screens) */}
-      <ActivityLog logs={state.logs} />
+      <ActivityLog logs={logs} />
     </div>
   );
-};
+});
+
+GameUI.displayName = 'GameUI';

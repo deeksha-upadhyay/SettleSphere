@@ -37,12 +37,19 @@ interface Room {
 const rooms: Record<string, Room> = {};
 let socketIo: Server | null = null;
 
-function emitGameState(roomId: string) {
+function emitGameState(roomId: string, logMessage?: string) {
   if (!socketIo) return;
   const room = rooms[roomId];
   if (!room) return;
   room.state.version++;
-  socketIo.to(roomId).emit("gameStateUpdate", room.state);
+  
+  // Emit state without logs to reduce payload size if logs are already synchronized
+  const { logs, ...stateWithoutLogs } = room.state;
+  socketIo.to(roomId).emit("gameStateUpdate", stateWithoutLogs);
+  
+  if (logMessage) {
+    socketIo.to(roomId).emit("newLog", logMessage);
+  }
 }
 
 function getAllVertices(tiles: TileData[]) {
@@ -279,6 +286,7 @@ function addLog(room: Room, message: string) {
   if (room.state.logs.length > 50) {
     room.state.logs.shift();
   }
+  emitGameState(room.id, message);
 }
 
 async function startServer() {

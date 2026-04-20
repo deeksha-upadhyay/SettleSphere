@@ -19,21 +19,23 @@ export const SettlementView: React.FC<SettlementViewProps> = React.memo(({
 }) => {
   return (
     <motion.div
-      initial={settlement ? { scale: 0, opacity: 0, rotate: -45 } : false}
+      initial={settlement ? { scale: 0, opacity: 0, rotate: -45, y: -20 } : false}
       animate={settlement ? { 
         scale: settlement.type === 'city' ? 1.25 : 1, 
         opacity: 1, 
         rotate: 0,
-        boxShadow: ['0 0 0px rgba(255,255,255,0)', '0 0 20px rgba(255,255,255,0.8)', '0 0 0px rgba(255,255,255,0)']
+        y: 0,
+        boxShadow: ['0 0 0px rgba(255,255,255,0)', '0 0 30px rgba(255,255,255,1)', '0 0 0px rgba(255,255,255,0)']
       } : { 
         opacity: isValidBuild ? 1 : 0,
-        scale: isValidBuild ? [1, 1.15, 1] : 1
+        scale: isValidBuild ? [1, 1.15, 1] : 1,
+        y: 0
       }}
       transition={settlement ? { 
         type: "spring", 
-        stiffness: 400, 
-        damping: 15,
-        boxShadow: { duration: 1, times: [0, 0.5, 1] }
+        stiffness: 500, 
+        damping: 12,
+        boxShadow: { duration: 1.2, times: [0, 0.3, 1] }
       } : { 
         opacity: { duration: 0.2 },
         scale: isValidBuild ? { repeat: Infinity, duration: 1.5, ease: "easeInOut" } : { duration: 0.2 }

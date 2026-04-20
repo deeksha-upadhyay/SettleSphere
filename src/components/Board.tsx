@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { HexTile } from './HexTile';
-import { useGame } from '../contexts/GameContext';
+import { useGameState, useGameActions } from '../contexts/GameContext';
 import { Settlement, Road } from '../types';
 import { getCanonicalVertexId, getCanonicalEdgeId } from '../lib/gameUtils';
 import { cn } from '@/lib/utils';
@@ -9,8 +9,9 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { SettlementView } from './SettlementView';
 import { RoadView } from './RoadView';
 
-export const Board: React.FC = () => {
-  const { state, tiles, buildSettlement, buildRoad, upgradeToCity, moveRobber, playerId } = useGame();
+export const Board: React.FC = React.memo(() => {
+  const { state, tiles, playerId } = useGameState();
+  const { buildSettlement, buildRoad, upgradeToCity, moveRobber } = useGameActions();
   const [confirmAction, setConfirmAction] = useState<{ type: 'settlement' | 'road' | 'city', id: string } | null>(null);
 
   const isMyTurn = useMemo(() => 
@@ -141,6 +142,36 @@ export const Board: React.FC = () => {
     }
   }, [isMyTurn, state?.gamePhase, moveRobber]);
 
+  const flatVertices = useMemo(() => {
+    const vertices: { id: string; vIndex: number; q: number; r: number }[] = [];
+    const seenV = new Set<string>();
+    tiles.forEach(tile => {
+      [0, 1, 2, 3, 4, 5].forEach(vIndex => {
+        const vId = getCanonicalVertexId(tile.q, tile.r, vIndex);
+        if (!seenV.has(vId)) {
+          seenV.add(vId);
+          vertices.push({ id: vId, vIndex, q: tile.q, r: tile.r });
+        }
+      });
+    });
+    return vertices;
+  }, [tiles]);
+
+  const flatEdges = useMemo(() => {
+    const edges: { id: string; eIndex: number; q: number; r: number }[] = [];
+    const seenE = new Set<string>();
+    tiles.forEach(tile => {
+      [0, 1, 2, 3, 4, 5].forEach(eIndex => {
+        const eId = getCanonicalEdgeId(tile.q, tile.r, eIndex);
+        if (!seenE.has(eId)) {
+          seenE.add(eId);
+          edges.push({ id: eId, eIndex, q: tile.q, r: tile.r });
+        }
+      });
+    });
+    return edges;
+  }, [tiles]);
+
   if (!state || tiles.length === 0) return null;
 
   const renderedVertices = new Set<string>();
@@ -159,7 +190,6 @@ export const Board: React.FC = () => {
             return (
               <div key={`tile-${tile.id}`} className="relative mx-[2px]">
                 <HexTile 
-                  key={tile.id}
                   id={tile.id}
                   type={tile.type} 
                   number={tile.number} 
@@ -187,7 +217,7 @@ export const Board: React.FC = () => {
                       settlement={settlement || null}
                       owner={owner || null}
                       isValidBuild={isValidBuild}
-                      canUpgrade={canUpgrade || false}
+                      canUpgrade={canUpgrade}
                       isMyTurn={isMyTurn}
                       onClick={handleSettlementClick}
                       style={boardLayout.vertexStyles[vIndex]}
@@ -204,7 +234,6 @@ export const Board: React.FC = () => {
                   const road = state.roads[eId];
                   const owner = road ? state.players.find(p => p.id === road.playerId) : null;
                   const isValidRoad = !!validityMap.roads[eId];
-
                   const styles = boardLayout.edgeStyles[eIndex];
 
                   return (
@@ -245,4 +274,4 @@ export const Board: React.FC = () => {
       />
     </div>
   );
-};
+});

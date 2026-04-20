@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
-import { useGame } from '../contexts/GameContext';
+import { useGameState, useGameActions } from '../contexts/GameContext';
 import { cn } from '@/lib/utils';
 import { RotateCcw, Play, CheckCircle2, AlertCircle, Home } from 'lucide-react';
 
-export const Dice: React.FC = () => {
-  const { state, rollDice: contextRollDice, endTurn, playerId } = useGame();
+export const Dice: React.FC = React.memo(() => {
+  const { state, playerId } = useGameState();
+  const { rollDice: contextRollDice, endTurn } = useGameActions();
   const [showConfirm, setShowConfirm] = useState(false);
   const [isRolling, setIsRolling] = useState(false);
   
@@ -160,7 +161,7 @@ export const Dice: React.FC = () => {
       </div>
     </div>
   );
-};
+});
 
 const Die: React.FC<{ value: number; rolling?: boolean }> = React.memo(({ value, rolling }) => (
   <motion.div 

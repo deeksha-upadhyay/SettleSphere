@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Player } from '../types';
 import { cn } from '@/lib/utils';
-import { useGame } from '../contexts/GameContext';
+import { useGameState } from '../contexts/GameContext';
 import { User, Home, Building2, Map, Trophy } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -9,6 +9,7 @@ const PlayerCard: React.FC<{ player: Player; isCurrent: boolean }> = React.memo(
   return (
     <motion.div 
       initial={false}
+      layout
       animate={isCurrent ? {
         scale: 1.05,
         borderColor: '#F4D03F',
@@ -95,13 +96,15 @@ const ResourceItem: React.FC<{ res: string; count: number }> = React.memo(({ res
 
 ResourceItem.displayName = 'ResourceItem';
 
-export const PlayerPanel: React.FC = () => {
-  const { state, playerId } = useGame();
+export const PlayerPanel: React.FC = React.memo(() => {
+  const { state, playerId } = useGameState();
   if (!state) return null;
   const players = state.players;
+  const currentPlayerIndex = state.currentPlayerIndex;
+  
   const myPlayer = useMemo(() => 
-    players.find(p => p.id === playerId) || players[state.currentPlayerIndex],
-    [players, playerId, state.currentPlayerIndex]
+    players.find(p => p.id === playerId) || players[currentPlayerIndex],
+    [players, playerId, currentPlayerIndex]
   );
 
   return (
@@ -139,4 +142,4 @@ export const PlayerPanel: React.FC = () => {
       </div>
     </div>
   );
-};
+});
