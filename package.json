@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --outfile=server.js --external:express --external:socket.io --external:vite --external:cors --external:dotenv --external:path --external:url --external:http --external:fs --allow-overwrite",
+    "build": "vite build",
     "preview": "vite preview",
-    "start": "node server.js",
-    "clean": "rm -rf dist server.js",
+    "start": "tsx server.ts",
+    "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
@@ -30,6 +30,7 @@
     "next-themes": "^0.4.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-router-dom": "^7.14.1",
     "shadcn": "^4.2.0",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",

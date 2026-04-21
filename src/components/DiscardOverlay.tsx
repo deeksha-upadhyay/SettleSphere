@@ -13,7 +13,13 @@ export const DiscardOverlay: React.FC = () => {
 
   if (!state) return null;
 
-  const player = state.players.find(p => p.id === playerId);
+  const player = React.useMemo(() => {
+    if (state.isLocal) {
+      return state.players.find(p => state.discardingPlayers.includes(p.id));
+    }
+    return state.players.find(p => p.id === playerId);
+  }, [state.isLocal, state.players, state.discardingPlayers, playerId]);
+
   const totalResources = player ? Object.values(player.resources).reduce((a, b) => (a as number) + (b as number), 0) as number : 0;
   const requiredDiscard = Math.floor(totalResources / 2);
   const currentDiscardTotal = Object.values(toDiscard).reduce((a, b) => (a as number) + (b as number), 0) as number;

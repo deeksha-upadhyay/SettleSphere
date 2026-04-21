@@ -15,8 +15,8 @@ export const Board: React.FC = React.memo(() => {
   const [confirmAction, setConfirmAction] = useState<{ type: 'settlement' | 'road' | 'city', id: string } | null>(null);
 
   const isMyTurn = useMemo(() => 
-    state?.players[state.currentPlayerIndex].id === playerId,
-    [state?.currentPlayerIndex, playerId]
+    state?.isLocal || state?.players[state.currentPlayerIndex].id === playerId,
+    [state?.isLocal, state?.currentPlayerIndex, playerId]
   );
 
   // Pre-calculate board layout (static)
@@ -76,11 +76,19 @@ export const Board: React.FC = React.memo(() => {
   const validityMap = useMemo(() => {
     if (!state || !playerId) return { settlements: {}, roads: {} };
     
+    const activePlayerId = state.isLocal ? state.players[state.currentPlayerIndex].id : playerId;
     const settlementValidity: Record<string, boolean> = {};
     const roadValidity: Record<string, boolean> = {};
 
     const existingSettlementKeys = Object.keys(state.settlements);
     const existingRoadValues = Object.values(state.roads) as Road[];
+
+    // Check phase
+    if (state.gamePhase === 'waiting' || state.gamePhase === 'robber' || state.gamePhase === 'discarding') {
+      return { settlements: {}, roads: {} };
+    }
+
+    if (!isMyTurn) return { settlements: {}, roads: {} };
 
     // This is still O(V*S) but at least it's only once per state change
     tiles.forEach(tile => {
@@ -96,19 +104,25 @@ export const Board: React.FC = React.memo(() => {
 
           if (!isTooClose) {
             const isConnectedToRoad = existingRoadValues.some(road => 
-              road.playerId === playerId && road.edgeId.includes(vId)
+              road.playerId === activePlayerId && road.edgeId.includes(vId)
             );
-            settlementValidity[vId] = (state.gamePhase === 'setup' || isConnectedToRoad);
+            
+            if (state.gamePhase === 'setup') {
+              const mySettlements = Object.values(state.settlements).filter(s => (s as Settlement).playerId === activePlayerId).length;
+              if (mySettlements < 2) settlementValidity[vId] = true;
+            } else if (isConnectedToRoad) {
+              settlementValidity[vId] = true;
+            }
           }
         }
 
         const eId = getCanonicalEdgeId(tile.q, tile.r, i);
         if (!state.roads[eId]) {
           const isConnectedToMyRoad = existingRoadValues.some(r => 
-            r.playerId === playerId && (r.edgeId.includes(eId.split('|')[0]) || r.edgeId.includes(eId.split('|')[1]))
+            (r as Road).playerId === activePlayerId && (r.edgeId.split('|').some(v => eId.includes(v)))
           );
           const isConnectedToMySettlement = (Object.values(state.settlements) as Settlement[]).some(s => 
-            s.playerId === playerId && eId.includes(s.vertexId)
+            s.playerId === activePlayerId && eId.includes(s.vertexId)
           );
           roadValidity[eId] = (state.gamePhase === 'setup' ? isConnectedToMySettlement : (isConnectedToMyRoad || isConnectedToMySettlement));
         }
@@ -208,7 +222,8 @@ export const Board: React.FC = React.memo(() => {
                   const settlement = state.settlements[vId];
                   const owner = settlement ? state.players.find(p => p.id === settlement.playerId) : null;
                   const isValidBuild = !!validityMap.settlements[vId];
-                  const canUpgrade = isMyTurn && settlement && settlement.playerId === playerId && settlement.type === 'settlement' && state.gamePhase === 'play';
+                  const activePlayerId = state.isLocal ? state.players[state.currentPlayerIndex].id : playerId;
+                  const canUpgrade = isMyTurn && settlement && settlement.playerId === activePlayerId && settlement.type === 'settlement' && state.gamePhase === 'play';
 
                   return (
                     <SettlementView

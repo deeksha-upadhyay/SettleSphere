@@ -14,7 +14,7 @@ export const Dice: React.FC = React.memo(() => {
   if (!state) return null;
   
   const currentPlayer = state.players[state.currentPlayerIndex];
-  const isMyTurn = currentPlayer.id === playerId;
+  const isMyTurn = state.isLocal || currentPlayer.id === playerId;
 
   const handleRollDice = () => {
     if (!isMyTurn || isRolling) return;
@@ -57,7 +57,17 @@ export const Dice: React.FC = React.memo(() => {
         className="bg-accent px-6 py-3 rounded-full font-bold text-text-dark shadow-lg text-sm tracking-wider flex items-center gap-2"
       >
         <div className={cn("w-2 h-2 rounded-full animate-pulse", currentPlayer.color)} />
-        {isMyTurn ? "YOUR TURN" : `${currentPlayer.name.toUpperCase()}'S TURN`}
+        {state.gamePhase === 'robber' ? (
+          (!state.victims || state.victims.length === 0) ? (
+            isMyTurn ? "MOVE THE ROBBER" : `${currentPlayer.name.toUpperCase()} IS MOVING THE ROBBER`
+          ) : (
+            isMyTurn ? "STEAL A CARD" : `${currentPlayer.name.toUpperCase()} IS STEALING...`
+          )
+        ) : state.gamePhase === 'discarding' ? (
+          "DISCARDING CARDS..."
+        ) : (
+          isMyTurn ? "YOUR TURN" : `${currentPlayer.name.toUpperCase()}'S TURN`
+        )}
       </motion.div>
 
       <div className="bg-white/90 backdrop-blur-md p-6 rounded-[32px] shadow-2xl flex flex-col gap-6 items-center border border-white/20">

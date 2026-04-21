@@ -48,4 +48,6 @@ export interface GameState {
   victims: number[]; // IDs of players who can be stolen from
   logs?: string[];
   version: number;
+  isLocal?: boolean;
+  isOnline?: boolean;
 }

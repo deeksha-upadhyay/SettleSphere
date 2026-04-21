@@ -103,8 +103,8 @@ export const PlayerPanel: React.FC = React.memo(() => {
   const currentPlayerIndex = state.currentPlayerIndex;
   
   const myPlayer = useMemo(() => 
-    players.find(p => p.id === playerId) || players[currentPlayerIndex],
-    [players, playerId, currentPlayerIndex]
+    state.isLocal ? players[currentPlayerIndex] : (players.find(p => p.id === playerId) || players[currentPlayerIndex]),
+    [players, playerId, currentPlayerIndex, state.isLocal]
   );
 
   return (

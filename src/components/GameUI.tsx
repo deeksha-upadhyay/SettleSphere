@@ -25,7 +25,7 @@ export const GameUI: React.FC = React.memo(() => {
 
   React.useEffect(() => {
     if (!state || !playerId) return;
-    const isMyTurn = state.players[state.currentPlayerIndex].id === playerId;
+    const isMyTurn = state.isLocal || state.players[state.currentPlayerIndex].id === playerId;
     if (isMyTurn && state.gamePhase !== 'waiting') {
       setShowYourTurn(true);
       const timer = setTimeout(() => setShowYourTurn(false), 2000);

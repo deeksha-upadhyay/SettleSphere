@@ -5,15 +5,36 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import cors from "cors";
-import { createServer as createViteServer } from "vite";
+// Vite is imported dynamically in dev mode to avoid production crashes
+// import { createServer as createViteServer } from "vite";
 import { GameState, Player, ResourceType, TileData, Settlement, Road } from "./src/types";
 import { getTileAt, getCanonicalVertexId, getCanonicalEdgeId } from "./src/lib/gameUtils";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import initialTiles from "./src/data/tiles.json" with { type: "json" };
-// const initialTiles = JSON.parse(fs.readFileSync(path.join(__dirname, "src/data/tiles.json"), "utf-8")) as TileData[];
+// Initial tiles for the hexagonal board
+const initialTiles: TileData[] = [
+  { id: 1, type: "wood", number: 11, q: 0, r: -2 },
+  { id: 2, type: "sheep", number: 12, q: 1, r: -2 },
+  { id: 3, type: "wheat", number: 9, q: 2, r: -2 },
+  { id: 4, type: "brick", number: 4, q: -1, r: -1 },
+  { id: 5, type: "ore", number: 6, q: 0, r: -1 },
+  { id: 6, type: "brick", number: 5, q: 1, r: -1 },
+  { id: 7, type: "sheep", number: 10, q: 2, r: -1 },
+  { id: 8, type: "desert", number: null, q: -2, r: 0 },
+  { id: 9, type: "wood", number: 3, q: -1, r: 0 },
+  { id: 10, type: "wheat", number: 11, q: 0, r: 0 },
+  { id: 11, type: "wood", number: 4, q: 1, r: 0 },
+  { id: 12, type: "wheat", number: 8, q: 2, r: 0 },
+  { id: 13, type: "brick", number: 8, q: -2, r: 1 },
+  { id: 14, type: "sheep", number: 10, q: -1, r: 1 },
+  { id: 15, type: "sheep", number: 9, q: 0, r: 1 },
+  { id: 16, type: "ore", number: 3, q: 1, r: 1 },
+  { id: 17, type: "ore", number: 5, q: -2, r: 2 },
+  { id: 18, type: "wheat", number: 2, q: -1, r: 2 },
+  { id: 19, type: "wood", number: 6, q: 0, r: 2 }
+];
 
 const INITIAL_RESOURCES: Record<ResourceType, number> = {
   wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0, desert: 0
@@ -33,6 +54,7 @@ interface Room {
   isDemo?: boolean;
   isPaused?: boolean;
   simulationSpeed?: number;
+  isLocal?: boolean;
 }
 
 const rooms: Record<string, Room> = {};
@@ -80,7 +102,7 @@ function runAiTurn(roomId: string, io: Server) {
   const playerIndex = room.state.currentPlayerIndex;
   const player = room.state.players[playerIndex];
 
-  if (!player.isBot) return;
+  if (!player || !player.isBot) return;
 
   const speed = room.simulationSpeed || 1500;
 
@@ -246,9 +268,11 @@ function runAiTurn(roomId: string, io: Server) {
       }
     } else if (phase === 'robber') {
       const otherTiles = room.tiles.filter(t => t.id !== state.robberTileId);
-      const newTile = otherTiles[Math.floor(Math.random() * otherTiles.length)];
-      state.robberTileId = newTile.id;
-      addLog(room, `${player.name} moved the robber.`);
+      if (otherTiles.length > 0) {
+        const newTile = otherTiles[Math.floor(Math.random() * otherTiles.length)];
+        state.robberTileId = newTile.id;
+        addLog(room, `${player.name} moved the robber.`);
+      }
       state.gamePhase = 'play';
     } else if (phase === 'discarding') {
       state.players.forEach(p => {
@@ -309,19 +333,64 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  app.get("/debug", (req, res) => {
+    const distPath = path.join(__dirname, "dist");
+    const indexPath = path.join(distPath, "index.html");
+    res.json({
+      env: process.env.NODE_ENV,
+      cwd: process.cwd(),
+      dirname: __dirname,
+      distExists: fs.existsSync(distPath),
+      indexExists: fs.existsSync(indexPath),
+      distContent: fs.existsSync(distPath) ? fs.readdirSync(distPath) : []
+    });
+  });
+
   // Socket.io logic
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
-    socket.on("createGame", ({ playerName }) => {
+    socket.on("createGame", ({ playerName, isLocal, playerCount }) => {
       const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
       const shuffledTiles = [...initialTiles].sort(() => Math.random() - 0.5) as TileData[];
       const desert = shuffledTiles.find(t => t.type === 'desert');
 
+      const colors = ["bg-red-500", "bg-blue-500", "bg-orange-500", "bg-green-500"];
+      const players: Player[] = [];
+      const roomPlayers: { socketId: string; playerId: number; name: string }[] = [];
+
+      if (isLocal) {
+        const count = playerCount || 2;
+        for (let i = 1; i <= count; i++) {
+          const name = i === 1 ? playerName : `Player ${i}`;
+          players.push({
+            id: i,
+            name: name,
+            color: colors[i - 1],
+            resources: { ...INITIAL_RESOURCES },
+            victoryPoints: 0,
+            roads: 0,
+            settlements: 0,
+            cities: 0
+          });
+          roomPlayers.push({ socketId: socket.id, playerId: i, name: name });
+        }
+      } else {
+        players.push({
+          id: 1,
+          name: playerName,
+          color: colors[0],
+          resources: { ...INITIAL_RESOURCES },
+          victoryPoints: 0,
+          roads: 0,
+          settlements: 0,
+          cities: 0
+        });
+        roomPlayers.push({ socketId: socket.id, playerId: 1, name: playerName });
+      }
+
       const initialState: GameState = {
-        players: [
-          { id: 1, name: playerName, color: "bg-red-500", resources: { ...INITIAL_RESOURCES }, victoryPoints: 0, roads: 0, settlements: 0, cities: 0 }
-        ],
+        players: players,
         currentPlayerIndex: 0,
         dice: [1, 1],
         hasRolled: false,
@@ -329,23 +398,27 @@ async function startServer() {
         settlements: {},
         roads: {},
         winner: null,
-        gamePhase: 'waiting',
+        gamePhase: isLocal ? 'setup' : 'waiting',
         setupStep: 0,
         discardingPlayers: [],
         victims: [],
-        logs: ["Game created. Waiting for players..."],
+        logs: [isLocal ? "Local game started!" : "Online room created. Waiting for players..."],
         version: 0,
+        isLocal: !!isLocal,
+        isOnline: !isLocal
       };
 
       rooms[roomId] = {
         id: roomId,
         state: initialState,
         tiles: shuffledTiles,
-        players: [{ socketId: socket.id, playerId: 1, name: playerName }]
+        players: roomPlayers,
+        isLocal: !!isLocal
       };
 
       socket.join(roomId);
       socket.emit("gameCreated", { roomId, state: initialState, tiles: shuffledTiles, playerId: 1, playerName });
+      console.log(`[Server] ${isLocal ? 'Local' : 'Online'} game created: ${roomId}`);
     });
 
     socket.on("startDemo", () => {
@@ -872,39 +945,83 @@ async function startServer() {
     });
   });
 
-  // Vite middleware for development
-  console.log(`[Server] Detected NODE_ENV: ${process.env.NODE_ENV}`);
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[Server] Starting in DEVELOPMENT mode with Vite middleware");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.resolve(process.cwd(), 'dist');
-    const indexPath = path.resolve(distPath, 'index.html');
-    
-    console.log(`[Server] Starting in PRODUCTION mode`);
-    console.log(`[Server] Serving static assets from: ${distPath}`);
-    console.log(`[Server] Index file path: ${indexPath}`);
-    console.log(`[Server] Index file exists: ${fs.existsSync(indexPath)}`);
-    
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(indexPath, (err) => {
-        if (err) {
-          console.error(`[Server] Error sending index.html: ${err.message}`);
-          res.status(404).send("Application files could not be found. Please wait for a few moments for the build to complete and refresh the page.");
-        }
+  // Serve static files and handle routing
+  const isDevelopment = process.env.NODE_ENV === "development";
+  console.log(`[Server] Environment: ${process.env.NODE_ENV || "production"} (isDevelopment: ${isDevelopment})`);
+  
+  if (isDevelopment) {
+    console.log("[Server] Starting with Vite middleware (Development Mode)");
+    try {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
       });
+      app.use(vite.middlewares);
+    } catch (e) {
+      console.error("[Server] Critical: Failed to load Vite middleware:", e);
+      // Fallback: search for dist
+      const distPath = path.resolve(process.cwd(), "dist");
+      if (fs.existsSync(distPath)) {
+        console.log(`[Server] Falling back to static files from: ${distPath}`);
+        app.use(express.static(distPath));
+      }
+    }
+  } else {
+    // Production Mode - be extremely explicit and robust
+    const distPath = path.resolve(process.cwd(), "dist");
+    const indexPath = path.resolve(distPath, "index.html");
+    
+    console.log(`[Server] Production Mode Active`);
+    console.log(`[Server] Dist Path: ${distPath}`);
+    console.log(`[Server] Index Path: ${indexPath}`);
+    
+    // Explicitly serve static files
+    app.use(express.static(distPath, { index: 'index.html' }));
+    
+    // Catch-all route for React Router (must be AFTER static assets)
+    app.get("*", (req, res) => {
+      console.log(`[Server] Request Path: ${req.path}`);
+      
+      // Serve index.html for all non-file routes
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        const errorDetails = {
+          message: "Production build (index.html) missing",
+          indexPath,
+          distPath,
+          cwd: process.cwd(),
+          files: fs.existsSync(distPath) ? fs.readdirSync(distPath) : ["DIST_FOLDER_MISSING"]
+        };
+        console.error(`[Server] 404 Error: ${JSON.stringify(errorDetails)}`);
+        res.set('Content-Type', 'text/html');
+        res.status(404).send(`
+          <div style="font-family: system-ui; padding: 2rem;">
+            <h1>404: Build Not Found</h1>
+            <pre>${JSON.stringify(errorDetails, null, 2)}</pre>
+          </div>
+        `);
+      }
     });
   }
 
   const PORT = 3000;
   httpServer.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`[Server] SUCCESS: Listening on 0.0.0.0:${PORT}`);
   });
 }
 
-startServer();
+// Global error handlers
+process.on('uncaughtException', (err) => {
+  console.error('[Server] CRITICAL: Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[Server] CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+startServer().catch(err => {
+  console.error('[Server] CRITICAL: Fatal Startup Error:', err);
+  process.exit(1);
+});

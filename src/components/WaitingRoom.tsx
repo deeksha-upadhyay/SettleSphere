@@ -20,6 +20,14 @@ export const WaitingRoom: React.FC = () => {
     }
   };
 
+  const copyRoomLink = () => {
+    if (roomId) {
+      const url = `${window.location.origin}/room/${roomId}`;
+      navigator.clipboard.writeText(url);
+      toast.success('Room link copied to clipboard!');
+    }
+  };
+
   return (
     <div className="min-h-screen w-full bg-sea flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated Background Elements */}
@@ -40,13 +48,23 @@ export const WaitingRoom: React.FC = () => {
       >
         <div className="text-center">
           <h1 className="font-serif italic text-5xl text-text-dark mb-2">Waiting Room</h1>
-          <div 
-            onClick={copyRoomId}
-            className="inline-flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border border-gray-100"
-          >
-            <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Room ID:</span>
-            <span className="text-lg font-black text-text-dark tracking-tighter">{roomId}</span>
-            <Copy size={16} className="text-gray-400" />
+          <div className="flex flex-col gap-2 items-center">
+            <div 
+              onClick={copyRoomId}
+              className="inline-flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border border-gray-100"
+            >
+              <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Code:</span>
+              <span className="text-lg font-black text-text-dark tracking-tighter">{roomId}</span>
+              <Copy size={16} className="text-gray-400" />
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={copyRoomLink}
+              className="rounded-full text-[10px] font-black uppercase tracking-widest py-4 border-gray-200"
+            >
+              Copy Shareable Link
+            </Button>
           </div>
         </div>
 

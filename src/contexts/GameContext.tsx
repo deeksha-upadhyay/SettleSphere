@@ -11,7 +11,7 @@ interface ChatMessage {
 }
 
 interface GameActionsType {
-  createGame: (playerName: string) => void;
+  createGame: (playerName: string, isLocal?: boolean, playerCount?: number) => void;
   joinGame: (roomId: string, playerName: string) => void;
   rollDice: () => void;
   endTurn: () => void;
@@ -143,8 +143,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const createGame = useCallback((playerName: string) => {
-    socketRef.current?.emit('createGame', { playerName });
+  const createGame = useCallback((playerName: string, isLocal?: boolean, playerCount?: number) => {
+    socketRef.current?.emit('createGame', { playerName, isLocal, playerCount });
   }, []);
 
   const joinGame = useCallback((roomId: string, playerName: string) => {
