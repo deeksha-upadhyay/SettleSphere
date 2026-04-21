@@ -114,18 +114,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return next;
       });
 
+      // Filter toasts to reduce spam
       if (log.includes('victory') || log.includes('wins')) {
-        toast.success(log, { icon: '🏆', duration: 5000 });
-      } else if (log.includes('rolled')) {
-        toast(log, { icon: '🎲' });
-      } else if (log.includes('built')) {
-        toast.success(log, { icon: '🏠' });
+        toast.success(log, { icon: '🏆', duration: 8000 });
+      } else if (log.includes('rolled a 7')) {
+        toast.error(log, { icon: '🎲' });
       } else if (log.includes('stole') || log.includes('Robber')) {
         toast.warning(log, { icon: '🕵️' });
       } else if (log.includes('joined')) {
         toast.info(log, { icon: '👋' });
-      } else {
-        toast(log);
+      } else if (log.includes('received')) {
+        // No toast for resources, use the sidebar
+        return;
       }
     });
 

@@ -32,42 +32,48 @@ export const Dice: React.FC = React.memo(() => {
         <motion.div 
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="bg-orange-500 px-8 py-4 rounded-[28px] font-black text-white shadow-2xl text-base tracking-tighter flex items-center gap-3 border-b-4 border-orange-700 active:translate-y-1 transition-all"
+          className="bg-orange-600 px-8 py-4 rounded-[28px] font-black text-white shadow-2xl text-base tracking-tighter flex items-center gap-3 border-b-4 border-orange-800 active:translate-y-1 transition-all"
         >
           <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
             <Home size={20} />
           </div>
-          {isMyTurn ? "YOUR TURN: SETTLE THE LAND" : `${currentPlayer.name.toUpperCase()}'S TURN: EXPANDING`}
+          <div className="flex flex-col items-start leading-none">
+            <span className="text-[10px] opacity-70 uppercase tracking-widest mb-1">Current Turn</span>
+            <span className="text-xl">{isMyTurn ? "YOUR TURN: SETTLE" : `${currentPlayer.name.toUpperCase()}: SETTLING`}</span>
+          </div>
         </motion.div>
-        <div className="px-4 py-2 bg-text-dark/5 backdrop-blur-xl rounded-full border border-text-dark/10">
-          <span className="text-[10px] font-black text-text-dark/40 uppercase tracking-[3px]">
-            Phase: Setup
-          </span>
-        </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col items-center gap-4">
+      {/* Dynamic Status Bar */}
       <motion.div 
-        key={state.currentPlayerIndex}
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="bg-accent px-6 py-3 rounded-full font-bold text-text-dark shadow-lg text-sm tracking-wider flex items-center gap-2"
-      >
-        <div className={cn("w-2 h-2 rounded-full animate-pulse", currentPlayer.color)} />
-        {state.gamePhase === 'robber' ? (
-          (!state.victims || state.victims.length === 0) ? (
-            isMyTurn ? "MOVE THE ROBBER" : `${currentPlayer.name.toUpperCase()} IS MOVING THE ROBBER`
-          ) : (
-            isMyTurn ? "STEAL A CARD" : `${currentPlayer.name.toUpperCase()} IS STEALING...`
-          )
-        ) : state.gamePhase === 'discarding' ? (
-          "DISCARDING CARDS..."
-        ) : (
-          isMyTurn ? "YOUR TURN" : `${currentPlayer.name.toUpperCase()}'S TURN`
+        key={state.currentPlayerIndex + (isRolling ? 'rolling' : 'normal')}
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className={cn(
+          "px-8 py-4 rounded-[28px] font-black shadow-2xl text-base tracking-tighter flex items-center gap-4 border-b-4 transition-all min-w-[320px]",
+          isMyTurn ? "bg-accent text-text-dark border-accent-dark" : "bg-white text-text-dark border-gray-200"
         )}
+      >
+        <div className={cn("w-10 h-10 rounded-full shadow-inner border-2 border-white flex items-center justify-center text-white", currentPlayer.color)}>
+           {isRolling ? <RotateCcw size={20} className="animate-spin" /> : <Play size={20} fill="currentColor" />}
+        </div>
+        <div className="flex flex-col items-start leading-tight">
+          <span className="text-[10px] opacity-60 uppercase tracking-widest mb-0.5">
+            {isRolling ? "Action" : "Current Turn"}
+          </span>
+          <span className="text-lg font-black truncate max-w-[200px]">
+            {isRolling 
+              ? `${currentPlayer.name} is rolling...` 
+              : isMyTurn 
+                ? "IT'S YOUR TURN" 
+                : `${currentPlayer.name.toUpperCase()}'S TURN`
+            }
+          </span>
+        </div>
       </motion.div>
 
       <div className="bg-white/90 backdrop-blur-md p-6 rounded-[32px] shadow-2xl flex flex-col gap-6 items-center border border-white/20">

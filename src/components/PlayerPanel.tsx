@@ -20,16 +20,16 @@ const PlayerCard: React.FC<{ player: Player; isCurrent: boolean }> = React.memo(
         scale: 1,
         borderColor: 'transparent',
         boxShadow: 'none',
-        opacity: 0.6,
-        filter: 'grayscale(0.5)'
+        opacity: 0.85,
+        filter: 'grayscale(0.2)'
       }}
       transition={isCurrent ? {
         boxShadow: { repeat: Infinity, duration: 2, ease: "easeInOut" },
         default: { type: "spring", stiffness: 300, damping: 20 }
       } : { duration: 0.5 }}
       className={cn(
-        "p-5 rounded-[24px] transition-all duration-500 border relative overflow-hidden",
-        isCurrent ? "bg-white z-10" : "bg-gray-50/50"
+        "p-4 rounded-[20px] transition-all duration-500 border relative overflow-hidden",
+        isCurrent ? "bg-white z-10" : "bg-gray-50/80"
       )}
     >
       {isCurrent && (
@@ -42,19 +42,37 @@ const PlayerCard: React.FC<{ player: Player; isCurrent: boolean }> = React.memo(
         </motion.div>
       )}
       
-      <div className="flex items-center gap-4 mb-4">
-        <div className={cn("w-10 h-10 rounded-full shadow-inner border-2 border-white", player.color)} />
+      <div className="flex items-center gap-3 mb-3">
+        <div className={cn("w-8 h-8 rounded-full shadow-inner border-2 border-white", player.color)} />
         <div className="flex flex-col">
-          <span className="font-black text-lg text-text-dark leading-none">{player.name}</span>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Player {player.id}</span>
+          <span className="font-black text-sm text-text-dark leading-none truncate max-w-[120px]">{player.name}</span>
+          <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Player {player.id}</span>
+        </div>
+        <div className="ml-auto bg-white/50 px-2 py-1 rounded-md border border-black/5 flex items-center gap-1">
+          <Trophy size={10} className="text-yellow-600" />
+          <span className="text-xs font-black text-text-dark">{player.victoryPoints}</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <StatItem icon={<Home size={12} />} label="Sett." value={player.settlements} />
-        <BuildingStat value={player.cities} />
-        <RoadStat value={player.roads} />
-        <StatItem icon={<Trophy size={12} />} label="Points" value={player.victoryPoints} color="text-yellow-600" />
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <StatItem icon={<Home size={10} />} label="Sett." value={player.settlements} />
+        <StatItem icon={<Building2 size={10} />} label="Cities" value={player.cities} />
+        <StatItem icon={<Map size={10} />} label="Roads" value={player.roads} />
+        <StatItem icon={<Trophy size={10} />} label="VPs" value={player.victoryPoints} color="text-yellow-600" />
+      </div>
+
+      {/* Resource Snapshot for ALL players */}
+      <div className="flex flex-wrap gap-1.5 pt-3 border-t border-black/5">
+        {Object.entries(player.resources).map(([res, count]) => (
+          res !== 'desert' && (
+            <div key={res} className="flex items-center gap-1 bg-white/40 px-1.5 py-0.5 rounded-lg border border-black/5">
+              <span className="text-[12px]">
+                {res === 'wood' ? '🌲' : res === 'brick' ? '🧱' : res === 'sheep' ? '🐑' : res === 'wheat' ? '🌾' : '⛰️'}
+              </span>
+              <span className="text-[10px] font-black">{count}</span>
+            </div>
+          )
+        ))}
       </div>
     </motion.div>
   );

@@ -232,27 +232,40 @@ export const GameUI: React.FC = React.memo(() => {
 
       {/* Main Game Area */}
       <main className="flex-1 relative flex flex-col items-center justify-center p-4">
-        {/* Top Bar */}
+        {/* Top Status Banner - Persistent Turn Indicator */}
         <motion.div 
-          initial={{ y: -50, opacity: 0 }}
+          initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="absolute top-6 left-6 right-6 flex flex-wrap justify-between items-center gap-4 z-10 pointer-events-none"
+          className="absolute top-0 inset-x-0 z-30 pointer-events-none flex justify-center py-4"
         >
-          <div className="flex items-center gap-6 pointer-events-auto">
-            <h1 className="font-serif italic text-2xl md:text-4xl text-white drop-shadow-md">
-              The Isle of Katan
-            </h1>
-            <HowToPlay />
-          </div>
-          <div className="flex items-center gap-4 pointer-events-auto">
-            <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white font-bold text-[10px] border border-white/10 uppercase tracking-widest hidden sm:block">
-              Match ID: #{roomId}
-            </div>
+          <div className="bg-white/80 backdrop-blur-md px-8 py-3 rounded-b-3xl border-x border-b border-black/5 shadow-xl flex items-center gap-6 pointer-events-auto overflow-hidden">
+             <div className="flex flex-col items-center">
+                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Current Match</span>
+                <span className="text-xs font-black text-text-dark tracking-tighter">Room: {roomId}</span>
+             </div>
+             
+             <div className="h-8 w-px bg-black/5" />
+             
+             <div className="flex items-center gap-3">
+                <div className={cn("w-6 h-6 rounded-full border-2 border-white shadow-sm", state.players[state.currentPlayerIndex].color)} />
+                <div className="flex flex-col">
+                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Active Turn</span>
+                   <span className="text-sm font-black text-text-dark">
+                      {state.players[state.currentPlayerIndex].name}
+                   </span>
+                </div>
+             </div>
+
+             {state.gamePhase === 'setup' && (
+                <div className="bg-orange-600 px-3 py-1 rounded-full">
+                   <span className="text-[9px] font-black text-white uppercase tracking-widest">Setup Phase</span>
+                </div>
+             )}
           </div>
         </motion.div>
 
-        {/* The Board */}
-        <div className="w-full h-full flex items-center justify-center overflow-auto custom-scrollbar pt-16 pb-24 lg:pt-0 lg:pb-0">
+        {/* Board Container */}
+        <div className="w-full h-full flex items-center justify-center overflow-auto custom-scrollbar pt-20 pb-28">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}

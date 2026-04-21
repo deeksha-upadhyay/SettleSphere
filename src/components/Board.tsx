@@ -16,8 +16,10 @@ export const Board: React.FC = React.memo(() => {
 
   const isMyTurn = useMemo(() => 
     state?.isLocal || state?.players[state.currentPlayerIndex].id === playerId,
-    [state?.isLocal, state?.currentPlayerIndex, playerId]
+    [state?.isLocal, state?.currentPlayerIndex, state?.players, playerId]
   );
+
+  const canInteract = isMyTurn && state?.gamePhase !== 'waiting' && state?.gamePhase !== 'discarding' && !state?.winner;
 
   const boardLayout = useMemo(() => {
     if (!tiles.length) return { rows: [], vertexStyles: [], edgeStyles: [] };
@@ -116,28 +118,28 @@ export const Board: React.FC = React.memo(() => {
   }, [state, playerId, tiles, isMyTurn, activePlayer]);
 
   const handleSettlementClick = useCallback((vId: string, settlement: Settlement | null) => {
-    if (!isMyTurn || !state) return;
+    if (!canInteract || !state) return;
     if (state.gamePhase === 'setup') {
       settlement ? upgradeToCity(vId) : buildSettlement(vId);
     } else {
       setConfirmAction({ type: settlement ? 'city' : 'settlement', id: vId });
     }
-  }, [isMyTurn, state?.gamePhase, upgradeToCity, buildSettlement]);
+  }, [canInteract, state?.gamePhase, upgradeToCity, buildSettlement]);
 
   const handleRoadClick = useCallback((eId: string) => {
-    if (!isMyTurn || !state) return;
+    if (!canInteract || !state) return;
     if (state.gamePhase === 'setup') {
       buildRoad(eId);
     } else {
       setConfirmAction({ type: 'road', id: eId });
     }
-  }, [isMyTurn, state?.gamePhase, buildRoad]);
+  }, [canInteract, state?.gamePhase, buildRoad]);
 
   const handleMoveRobber = useCallback((tileId: number) => {
-    if (isMyTurn && state?.gamePhase === 'robber') {
+    if (canInteract && state?.gamePhase === 'robber') {
       moveRobber(tileId);
     }
-  }, [isMyTurn, state?.gamePhase, moveRobber]);
+  }, [canInteract, state?.gamePhase, moveRobber]);
 
   if (!state || tiles.length === 0) return null;
 

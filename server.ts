@@ -612,9 +612,11 @@ async function startServer() {
       } else {
         // Distribute resources
         const updatedPlayers = [...room.state.players];
+        const resourceGains: Record<string, Record<ResourceType, number>> = {};
+        
         (Object.values(room.state.settlements) as Settlement[]).forEach(settlement => {
-          const playerIndex = updatedPlayers.findIndex(p => p.id === settlement.playerId);
-          if (playerIndex === -1) return;
+          const player = updatedPlayers.find(p => p.id === settlement.playerId);
+          if (!player) return;
 
           const tileCoords = settlement.vertexId.replace('v:', '').split('|').map(s => s.split(',').map(Number));
           tileCoords.forEach(([q, r]) => {
@@ -623,11 +625,24 @@ async function startServer() {
               const amount = settlement.type === 'city' ? 2 : 1;
               const resType = tile.type;
               if (resType !== 'desert') {
-                updatedPlayers[playerIndex].resources[resType] += amount;
+                player.resources[resType] += amount;
+                
+                if (!resourceGains[player.name]) resourceGains[player.name] = {} as Record<ResourceType, number>;
+                if (!resourceGains[player.name][resType]) resourceGains[player.name][resType] = 0;
+                resourceGains[player.name][resType] += amount;
               }
             }
           });
         });
+        
+        // Grouped logging for resources
+        Object.entries(resourceGains).forEach(([name, gains]) => {
+          const gainStr = Object.entries(gains)
+            .map(([res, count]) => `${count} ${res.charAt(0).toUpperCase() + res.slice(1)}`)
+            .join(', ');
+          addLog(room, `${name} received: ${gainStr}`);
+        });
+
         room.state.players = updatedPlayers;
       }
 
