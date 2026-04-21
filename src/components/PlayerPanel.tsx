@@ -3,7 +3,7 @@ import { Player } from '../types';
 import { cn } from '@/lib/utils';
 import { useGameState } from '../contexts/GameContext';
 import { User, Home, Building2, Map, Trophy } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 const PlayerCard: React.FC<{ player: Player; isCurrent: boolean }> = React.memo(({ player, isCurrent }) => {
   return (
@@ -116,13 +116,36 @@ export const PlayerPanel: React.FC = React.memo(() => {
         </div>
         
         <div className="space-y-4">
-          {players.map((player, index) => (
-            <PlayerCard 
-              key={player.id} 
-              player={player} 
-              isCurrent={state.currentPlayerIndex === index} 
-            />
-          ))}
+          {players.map((player, index) => {
+            const isCurrent = state.currentPlayerIndex === index;
+            const isThinking = isCurrent && player.isBot && state.gamePhase !== 'robber' && state.gamePhase !== 'discarding' && state.gamePhase !== 'waiting';
+            
+            return (
+              <div key={player.id} className="relative">
+                <PlayerCard 
+                  player={player} 
+                  isCurrent={isCurrent} 
+                />
+                <AnimatePresence>
+                  {isThinking && (
+                    <motion.div 
+                      initial={{ scale: 0.8, opacity: 0, y: 10 }}
+                      animate={{ scale: 1, opacity: 1, y: 0 }}
+                      exit={{ scale: 0.8, opacity: 0, y: 10 }}
+                      className="absolute -bottom-2 right-4 bg-accent text-text-dark px-3 py-1 rounded-full shadow-lg border-2 border-white flex items-center gap-2 z-20"
+                    >
+                      <div className="flex gap-0.5">
+                        <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1 h-1 bg-text-dark rounded-full" />
+                        <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1 h-1 bg-text-dark rounded-full" />
+                        <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1 h-1 bg-text-dark rounded-full" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Thinking...</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
       </div>
 

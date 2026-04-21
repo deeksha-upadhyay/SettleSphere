@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useGameState, useActivity } from '../contexts/GameContext';
 import { Button } from './ui/button';
 import { Toaster } from './ui/sonner';
-import { ScrollText, History, Trophy, PartyPopper } from 'lucide-react';
+import { ScrollText, History, Trophy, PartyPopper, X, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const GameUI: React.FC = React.memo(() => {
@@ -22,6 +22,8 @@ export const GameUI: React.FC = React.memo(() => {
   const { logs } = useActivity();
   const [showYourTurn, setShowYourTurn] = React.useState(false);
   const [showRobberAlert, setShowRobberAlert] = React.useState(false);
+  const [isPlayerPanelOpen, setIsPlayerPanelOpen] = React.useState(false);
+  const [isLogOpen, setIsLogOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (!state || !playerId) return;
@@ -54,6 +56,26 @@ export const GameUI: React.FC = React.memo(() => {
       <Toaster position="top-right" closeButton richColors />
       <DemoControls />
 
+      {/* Mobile Sidebar Toggles */}
+      <div className="fixed top-20 left-4 z-40 lg:hidden flex flex-col gap-2">
+        <Button 
+          variant="secondary" 
+          size="icon" 
+          className="rounded-full shadow-lg bg-white/90 backdrop-blur-sm"
+          onClick={() => setIsPlayerPanelOpen(!isPlayerPanelOpen)}
+        >
+          <Trophy size={20} className="text-yellow-600" />
+        </Button>
+        <Button 
+          variant="secondary" 
+          size="icon" 
+          className="rounded-full shadow-lg bg-white/90 backdrop-blur-sm xl:hidden"
+          onClick={() => setIsLogOpen(!isLogOpen)}
+        >
+          <History size={20} className="text-text-dark/60" />
+        </Button>
+      </div>
+
       {/* Your Turn Overlay */}
       <AnimatePresence>
         {showYourTurn && (
@@ -82,7 +104,7 @@ export const GameUI: React.FC = React.memo(() => {
                   transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-20"
                 />
-                <h2 className="text-7xl font-black uppercase tracking-tighter italic relative z-10 drop-shadow-lg">Your Turn!</h2>
+                <h2 className="text-4xl md:text-7xl font-black uppercase tracking-tighter italic relative z-10 drop-shadow-lg">Your Turn!</h2>
               </div>
               <motion.div
                 initial={{ scale: 0 }}
@@ -97,21 +119,21 @@ export const GameUI: React.FC = React.memo(() => {
         )}
       </AnimatePresence>
 
-      {/* Robber Alert */}
+      {/* Robber Alert - Adjusted to not overlap sidebar */}
       <AnimatePresence>
         {showRobberAlert && (
           <motion.div
-            initial={{ x: 300, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 300, opacity: 0 }}
-            className="fixed top-24 right-6 z-[110]"
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-[110]"
           >
-            <div className="bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border-2 border-red-400">
+            <div className="bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border-2 border-red-400 backdrop-blur-md">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
                 <span className="text-xl">👤</span>
               </div>
               <div>
-                <p className="font-black uppercase tracking-widest text-xs">Alert</p>
+                <p className="font-black uppercase tracking-widest text-[10px]">Alert</p>
                 <p className="font-bold">Robber Activated!</p>
               </div>
             </div>
@@ -166,31 +188,47 @@ export const GameUI: React.FC = React.memo(() => {
       {/* Steal Overlay */}
       <StealOverlay />
 
-      {/* Sidebar - Left */}
-      <motion.aside 
-        initial={{ x: -300, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="hidden lg:flex flex-col gap-4 p-6"
-      >
-        <PlayerPanel />
-        
-        {/* AI Thinking Indicator */}
-        {state.players[state.currentPlayerIndex].isBot && !state.winner && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-accent text-white p-4 rounded-2xl shadow-lg flex items-center gap-3"
+      {/* Sidebar - Left (Desktop: Fixed, Mobile: Animated Sheet) */}
+      <AnimatePresence>
+        {(isPlayerPanelOpen || window.innerWidth >= 1024) && (
+          <motion.aside 
+            initial={{ x: -400 }}
+            animate={{ x: 0 }}
+            exit={{ x: -400 }}
+            className={cn(
+              "fixed lg:static inset-y-0 left-0 z-50 lg:z-10 flex flex-col gap-4",
+              !isPlayerPanelOpen && "hidden lg:flex"
+            )}
           >
-            <div className="flex gap-1">
-              <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" />
-              <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0.2s]" />
-              <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0.4s]" />
+            <div className="relative h-full">
+              {isPlayerPanelOpen && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute top-4 right-4 lg:hidden rounded-full hover:bg-black/5"
+                  onClick={() => setIsPlayerPanelOpen(false)}
+                >
+                  <X size={20} />
+                </Button>
+              )}
+              <PlayerPanel />
             </div>
-            <span className="text-xs font-bold">{state.players[state.currentPlayerIndex].name} is thinking...</span>
-          </motion.div>
+          </motion.aside>
         )}
-      </motion.aside>
+      </AnimatePresence>
+
+      {/* Overlay for mobile sidebar */}
+      <AnimatePresence>
+        {isPlayerPanelOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsPlayerPanelOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
 
       {/* Main Game Area */}
       <main className="flex-1 relative flex flex-col items-center justify-center p-4">
@@ -198,28 +236,28 @@ export const GameUI: React.FC = React.memo(() => {
         <motion.div 
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="absolute top-6 left-6 right-6 flex flex-wrap justify-between items-center gap-4 z-10"
+          className="absolute top-6 left-6 right-6 flex flex-wrap justify-between items-center gap-4 z-10 pointer-events-none"
         >
-          <div className="flex items-center gap-6">
-            <h1 className="font-serif italic text-3xl md:text-4xl text-white drop-shadow-md">
+          <div className="flex items-center gap-6 pointer-events-auto">
+            <h1 className="font-serif italic text-2xl md:text-4xl text-white drop-shadow-md">
               The Isle of Katan
             </h1>
             <HowToPlay />
           </div>
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white font-bold text-xs border border-white/10 uppercase tracking-widest">
+          <div className="flex items-center gap-4 pointer-events-auto">
+            <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white font-bold text-[10px] border border-white/10 uppercase tracking-widest hidden sm:block">
               Match ID: #{roomId}
             </div>
           </div>
         </motion.div>
 
         {/* The Board */}
-        <div className="w-full h-full flex items-center justify-center overflow-auto custom-scrollbar">
+        <div className="w-full h-full flex items-center justify-center overflow-auto custom-scrollbar pt-16 pb-24 lg:pt-0 lg:pb-0">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.3, duration: 1, ease: "backOut" }}
-            className="relative z-0 scale-75 md:scale-100"
+            className="relative z-0 scale-[0.6] sm:scale-75 md:scale-90 lg:scale-100"
           >
             <Board />
           </motion.div>
@@ -235,14 +273,53 @@ export const GameUI: React.FC = React.memo(() => {
           <Dice />
         </motion.div>
 
-        {/* Chat Panel (Floating Bottom Right) */}
-        <div className="absolute bottom-6 right-6 z-30">
+        {/* Chat Panel (Floating Bottom Right) - Shifted to avoid overlap on mobile */}
+        <div className="absolute bottom-6 right-6 z-30 sm:bottom-8 sm:right-8">
           <Chat />
         </div>
       </main>
 
-      {/* Activity Log - Right Sidebar (Hidden on small screens) */}
-      <ActivityLog logs={logs} />
+      {/* Activity Log - Right Sidebar (Desktop: Fixed, Mobile: Toggleable) */}
+      <AnimatePresence>
+        {(isLogOpen || window.innerWidth >= 1280) && (
+          <motion.aside 
+            initial={{ x: 400 }}
+            animate={{ x: 0 }}
+            exit={{ x: 400 }}
+            className={cn(
+              "fixed xl:static inset-y-0 right-0 z-50 xl:z-10 flex flex-col",
+              !isLogOpen && "hidden xl:flex"
+            )}
+          >
+            <div className="relative h-full flex flex-col">
+              {isLogOpen && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute top-4 left-4 xl:hidden rounded-full hover:bg-black/5"
+                  onClick={() => setIsLogOpen(false)}
+                >
+                  <X size={20} />
+                </Button>
+              )}
+              <ActivityLog logs={logs} />
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* Overlay for mobile log */}
+      <AnimatePresence>
+        {isLogOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsLogOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 xl:hidden"
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 });

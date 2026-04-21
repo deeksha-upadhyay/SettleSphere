@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ResourceType } from '../types';
 import { cn } from '@/lib/utils';
-import { useGame } from '../contexts/GameContext';
 import {
   Tooltip,
   TooltipContent,
@@ -18,6 +17,8 @@ interface HexTileProps {
   className?: string;
   isRobber?: boolean;
   onMoveRobber?: (id: number) => void;
+  diceRoll?: number;
+  hasRolled?: boolean;
 }
 
 const resourceInfo: Record<ResourceType, { bg: string; text: string; icon: string; label: string; color: string }> = {
@@ -29,20 +30,19 @@ const resourceInfo: Record<ResourceType, { bg: string; text: string; icon: strin
   desert: { bg: 'bg-desert', text: 'text-text-dark', icon: '🏜️', label: 'Desert', color: '#EDC9AF' },
 };
 
-export const HexTile: React.FC<HexTileProps> = React.memo(({ id, type, number, q, r, className, isRobber, onMoveRobber }) => {
-  const { state } = useGame();
+export const HexTile: React.FC<HexTileProps> = React.memo(({ 
+  id, type, number, q, r, className, isRobber, onMoveRobber, diceRoll, hasRolled 
+}) => {
   const info = resourceInfo[type];
   const [isProducing, setIsProducing] = useState(false);
 
   useEffect(() => {
-    if (!state || !number) return;
-    const diceSum = state.dice[0] + state.dice[1];
-    if (state.hasRolled && diceSum === number && !isRobber) {
+    if (number && hasRolled && diceRoll === number && !isRobber) {
       setIsProducing(true);
       const timer = setTimeout(() => setIsProducing(false), 2000);
       return () => clearTimeout(timer);
     }
-  }, [state?.dice, state?.hasRolled, number, isRobber]);
+  }, [diceRoll, hasRolled, number, isRobber]);
 
   return (
     <Tooltip>

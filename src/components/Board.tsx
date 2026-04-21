@@ -19,9 +19,8 @@ export const Board: React.FC = React.memo(() => {
     [state?.isLocal, state?.currentPlayerIndex, playerId]
   );
 
-  // Pre-calculate board layout (static)
   const boardLayout = useMemo(() => {
-    if (!tiles.length) return { rows: [], vertices: [], edges: [] };
+    if (!tiles.length) return { rows: [], vertexStyles: [], edgeStyles: [] };
 
     const rows = [
       tiles.slice(0, 3),
@@ -30,11 +29,6 @@ export const Board: React.FC = React.memo(() => {
       tiles.slice(12, 16),
       tiles.slice(16, 19),
     ];
-
-    const vertices: { id: string; pos: any }[] = [];
-    const edges: { id: string; pos: any }[] = [];
-    const seenV = new Set<string>();
-    const seenE = new Set<string>();
 
     const vertexStyles = [
       { top: '-2%', left: '50%' },
@@ -54,43 +48,32 @@ export const Board: React.FC = React.memo(() => {
       { top: '12%', left: '25%', rotate: '330deg' },
     ];
 
-    tiles.forEach(tile => {
-      [0,1,2,3,4,5].forEach(i => {
-        const vId = getCanonicalVertexId(tile.q, tile.r, i);
-        if (!seenV.has(vId)) {
-          seenV.add(vId);
-          // Calculate global position relative to tile container
-          // This is tricky because we use relative positioning in CSS
-          // For now, we'll keep the relative layout but pre-calculate IDs
-        }
-        const eId = getCanonicalEdgeId(tile.q, tile.r, i);
-        if (!seenE.has(eId)) {
-          seenE.add(eId);
-        }
-      });
-    });
-
     return { rows, vertexStyles, edgeStyles };
   }, [tiles]);
+
+  const activePlayer = useMemo(() => {
+    if (!state) return null;
+    return state.players[state.currentPlayerIndex];
+  }, [state?.players, state?.currentPlayerIndex]);
 
   const validityMap = useMemo(() => {
     if (!state || !playerId) return { settlements: {}, roads: {} };
     
-    const activePlayerId = state.isLocal ? state.players[state.currentPlayerIndex].id : playerId;
+    const activePlayerId = state.isLocal ? activePlayer?.id : playerId;
+    if (!activePlayerId) return { settlements: {}, roads: {} };
+
     const settlementValidity: Record<string, boolean> = {};
     const roadValidity: Record<string, boolean> = {};
 
-    const existingSettlementKeys = Object.keys(state.settlements);
-    const existingRoadValues = Object.values(state.roads) as Road[];
-
-    // Check phase
     if (state.gamePhase === 'waiting' || state.gamePhase === 'robber' || state.gamePhase === 'discarding') {
       return { settlements: {}, roads: {} };
     }
 
     if (!isMyTurn) return { settlements: {}, roads: {} };
 
-    // This is still O(V*S) but at least it's only once per state change
+    const existingSettlementKeys = Object.keys(state.settlements);
+    const existingRoadValues = Object.values(state.roads) as Road[];
+
     tiles.forEach(tile => {
       [0,1,2,3,4,5].forEach(i => {
         const vId = getCanonicalVertexId(tile.q, tile.r, i);
@@ -130,7 +113,7 @@ export const Board: React.FC = React.memo(() => {
     });
 
     return { settlements: settlementValidity, roads: roadValidity };
-  }, [state, playerId, tiles]);
+  }, [state, playerId, tiles, isMyTurn, activePlayer]);
 
   const handleSettlementClick = useCallback((vId: string, settlement: Settlement | null) => {
     if (!isMyTurn || !state) return;
@@ -156,124 +139,102 @@ export const Board: React.FC = React.memo(() => {
     }
   }, [isMyTurn, state?.gamePhase, moveRobber]);
 
-  const flatVertices = useMemo(() => {
-    const vertices: { id: string; vIndex: number; q: number; r: number }[] = [];
-    const seenV = new Set<string>();
-    tiles.forEach(tile => {
-      [0, 1, 2, 3, 4, 5].forEach(vIndex => {
-        const vId = getCanonicalVertexId(tile.q, tile.r, vIndex);
-        if (!seenV.has(vId)) {
-          seenV.add(vId);
-          vertices.push({ id: vId, vIndex, q: tile.q, r: tile.r });
-        }
-      });
-    });
-    return vertices;
-  }, [tiles]);
-
-  const flatEdges = useMemo(() => {
-    const edges: { id: string; eIndex: number; q: number; r: number }[] = [];
-    const seenE = new Set<string>();
-    tiles.forEach(tile => {
-      [0, 1, 2, 3, 4, 5].forEach(eIndex => {
-        const eId = getCanonicalEdgeId(tile.q, tile.r, eIndex);
-        if (!seenE.has(eId)) {
-          seenE.add(eId);
-          edges.push({ id: eId, eIndex, q: tile.q, r: tile.r });
-        }
-      });
-    });
-    return edges;
-  }, [tiles]);
-
   if (!state || tiles.length === 0) return null;
 
-  const renderedVertices = new Set<string>();
-  const renderedEdges = new Set<string>();
-
   return (
-    <div className="flex flex-col items-center justify-center p-8 select-none relative">
-      {boardLayout.rows.map((row, rowIndex) => (
-        <div 
-          key={`row-${rowIndex}`} 
-          className="flex justify-center -mt-[34px] first:mt-0"
-        >
-          {row.map((tile) => {
-            const isRobber = state.robberTileId === tile.id;
-            
-            return (
-              <div key={`tile-${tile.id}`} className="relative mx-[2px]">
-                <HexTile 
-                  id={tile.id}
-                  type={tile.type} 
-                  number={tile.number} 
-                  q={tile.q}
-                  r={tile.r}
-                  isRobber={isRobber}
-                  onMoveRobber={handleMoveRobber}
-                />
-                
-                {/* Vertices */}
-                {[0, 1, 2, 3, 4, 5].map(vIndex => {
-                  const vId = getCanonicalVertexId(tile.q, tile.r, vIndex);
-                  if (renderedVertices.has(vId)) return null;
-                  renderedVertices.add(vId);
+    <div className="flex flex-col items-center justify-center p-8 select-none relative perspective-1000">
+      <div className="relative">
+        {boardLayout.rows.map((row, rowIndex) => (
+          <div 
+            key={`row-${rowIndex}`} 
+            className="flex justify-center -mt-[34px] first:mt-0"
+          >
+            {row.map((tile) => {
+              const isRobber = state.robberTileId === tile.id;
+              
+              return (
+                <div key={`tile-${tile.id}`} className="relative mx-[2px]">
+                  <HexTile 
+                    id={tile.id}
+                    type={tile.type} 
+                    number={tile.number} 
+                    q={tile.q}
+                    r={tile.r}
+                    isRobber={isRobber}
+                    onMoveRobber={handleMoveRobber}
+                    diceRoll={state.dice[0] + state.dice[1]}
+                    hasRolled={state.hasRolled}
+                  />
 
-                  const settlement = state.settlements[vId];
-                  const owner = settlement ? state.players.find(p => p.id === settlement.playerId) : null;
-                  const isValidBuild = !!validityMap.settlements[vId];
-                  const activePlayerId = state.isLocal ? state.players[state.currentPlayerIndex].id : playerId;
-                  const canUpgrade = isMyTurn && settlement && settlement.playerId === activePlayerId && settlement.type === 'settlement' && state.gamePhase === 'play';
+                  {/* Render Vertices for this tile */}
+                  {[0, 1, 2, 3, 4, 5].map(vIndex => {
+                    const vId = getCanonicalVertexId(tile.q, tile.r, vIndex);
+                    // To avoid double rendering across tiles, we only render vertices 
+                    // from the "primary" tile they belong to (e.g. the one where they are vertex 0 or 1 etc)
+                    // but the Set check in the old logic was safer. Let's stick to a cleaner approach:
+                    // Only render if this tile ID matches the first ID in the vId string
+                    const primaryTileIdForVertex = vId.replace('v:', '').split('|')[0];
+                    if (`${tile.q},${tile.r}` !== primaryTileIdForVertex) return null;
 
-                  return (
-                    <SettlementView
-                      key={vId}
-                      vId={vId}
-                      settlement={settlement || null}
-                      owner={owner || null}
-                      isValidBuild={isValidBuild}
-                      canUpgrade={canUpgrade}
-                      isMyTurn={isMyTurn}
-                      onClick={handleSettlementClick}
-                      style={boardLayout.vertexStyles[vIndex]}
-                    />
-                  );
-                })}
+                    const settlement = state.settlements[vId];
+                    const owner = settlement ? state.players.find(p => p.id === settlement.playerId) : null;
+                    const isValidBuild = !!validityMap.settlements[vId];
+                    const activePlayerId = state.isLocal ? activePlayer?.id : playerId;
+                    const canUpgrade = isMyTurn && settlement && settlement.playerId === activePlayerId && settlement.type === 'settlement' && state.gamePhase === 'play';
 
-                {/* Edges */}
-                {[0, 1, 2, 3, 4, 5].map(eIndex => {
-                  const eId = getCanonicalEdgeId(tile.q, tile.r, eIndex);
-                  if (renderedEdges.has(eId)) return null;
-                  renderedEdges.add(eId);
+                    return (
+                      <SettlementView
+                        key={vId}
+                        vId={vId}
+                        settlement={settlement || null}
+                        owner={owner || null}
+                        isValidBuild={isValidBuild}
+                        canUpgrade={canUpgrade}
+                        isMyTurn={isMyTurn}
+                        onClick={handleSettlementClick}
+                        style={boardLayout.vertexStyles[vIndex]}
+                      />
+                    );
+                  })}
 
-                  const road = state.roads[eId];
-                  const owner = road ? state.players.find(p => p.id === road.playerId) : null;
-                  const isValidRoad = !!validityMap.roads[eId];
-                  const styles = boardLayout.edgeStyles[eIndex];
+                  {/* Render Edges for this tile */}
+                  {[0, 1, 2, 3, 4, 5].map(eIndex => {
+                    const eId = getCanonicalEdgeId(tile.q, tile.r, eIndex);
+                    // Similar cleanup logic: only render if this tile is the primary owner
+                    // An edge ID looks like e:v1|v2. We check if the current tile is the lexicographical first one.
+                    const primaryTileIdForEdge = eId.replace('e:v:', '').split('|')[0].split(',').slice(0, 2).join(',');
+                    if (`${tile.q},${tile.r}` !== primaryTileIdForEdge) return null;
 
-                  return (
-                    <RoadView
-                      key={eId}
-                      eId={eId}
-                      road={road || null}
-                      owner={owner || null}
-                      isValidRoad={isValidRoad}
-                      isMyTurn={isMyTurn}
-                      onClick={handleRoadClick}
-                      style={{ 
-                        top: styles.top, 
-                        left: styles.left, 
-                        transform: `translate(-50%, -50%) rotate(${styles.rotate})`,
-                        transformOrigin: 'center'
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      ))}
+                    const road = state.roads[eId];
+                    const owner = road ? state.players.find(p => p.id === road.playerId) : null;
+                    const isValidRoad = !!validityMap.roads[eId];
+                    const styles = boardLayout.edgeStyles[eIndex];
+
+                    return (
+                      <RoadView
+                        key={eId}
+                        eId={eId}
+                        road={road || null}
+                        owner={owner || null}
+                        isValidRoad={isValidRoad}
+                        isMyTurn={isMyTurn}
+                        onClick={handleRoadClick}
+                        style={{ 
+                          top: styles.top, 
+                          left: styles.left, 
+                          transform: `translate(-50%, -50%) rotate(${styles.rotate})`,
+                          transformOrigin: 'center'
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
       <ConfirmDialog 
         isOpen={confirmAction !== null}
         onClose={() => setConfirmAction(null)}
