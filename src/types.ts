@@ -50,4 +50,5 @@ export interface GameState {
   version: number;
   isLocal?: boolean;
   isOnline?: boolean;
+  isRolling?: boolean;
 }

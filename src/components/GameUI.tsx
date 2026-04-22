@@ -52,287 +52,231 @@ export const GameUI: React.FC = React.memo(() => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-sea flex overflow-hidden font-sans text-text-dark relative">
+    <div className="h-screen w-full bg-[#f8f9fa] flex overflow-hidden font-sans text-text-dark relative">
       <Toaster position="top-right" closeButton richColors />
       <DemoControls />
 
-      {/* Mobile Sidebar Toggles */}
-      <div className="fixed top-20 left-4 z-40 lg:hidden flex flex-col gap-2">
-        <Button 
-          variant="secondary" 
-          size="icon" 
-          className="rounded-full shadow-lg bg-white/90 backdrop-blur-sm"
-          onClick={() => setIsPlayerPanelOpen(!isPlayerPanelOpen)}
-        >
-          <Trophy size={20} className="text-yellow-600" />
-        </Button>
-        <Button 
-          variant="secondary" 
-          size="icon" 
-          className="rounded-full shadow-lg bg-white/90 backdrop-blur-sm xl:hidden"
-          onClick={() => setIsLogOpen(!isLogOpen)}
-        >
-          <History size={20} className="text-text-dark/60" />
-        </Button>
+      {/* Main Container */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar (Player Info) */}
+        <div className="hidden lg:block shrink-0">
+          <PlayerPanel />
+        </div>
+
+        {/* Center Game Area */}
+        <div className="flex-1 flex flex-col relative overflow-hidden bg-[radial-gradient(circle_at_center,_#ffffff_0%,_#f1f1f1_100%)]">
+          {/* Top Bar */}
+          <div className="h-16 w-full bg-white/80 backdrop-blur-md border-b border-black/5 flex items-center justify-between px-6 z-40">
+            {/* ... */}
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Room ID</span>
+                <span className="text-xs font-black text-text-dark leading-none">{roomId}</span>
+              </div>
+              <div className="h-8 w-px bg-black/5" />
+              <div className="bg-text-dark text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+                {state.gamePhase} phase
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center absolute left-1/2 -translate-x-1/2">
+              <AnimatePresence mode="wait">
+                <motion.div 
+                  key={state.currentPlayerIndex}
+                  initial={{ y: -20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 20, opacity: 0 }}
+                  className={cn(
+                    "px-6 py-2 rounded-2xl border flex items-center gap-3 transition-all shadow-sm",
+                    (state.isLocal || state.players[state.currentPlayerIndex].id === playerId) 
+                      ? "bg-accent border-accent text-text-dark shadow-xl shadow-accent/10 scale-105" 
+                      : "bg-white border-black/5 text-gray-500"
+                  )}
+                >
+                  <div className={cn("w-3 h-3 rounded-full animate-pulse shrink-0", state.players[state.currentPlayerIndex].color)} />
+                  <div className="flex flex-col items-center">
+                    <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-50">Current Turn</span>
+                    <span className="text-sm font-black truncate max-w-[120px]">{state.players[state.currentPlayerIndex].name}</span>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            <div className="flex items-center gap-2">
+               <Button 
+                variant="outline" 
+                size="icon" 
+                className="lg:hidden rounded-xl border-black/5"
+                onClick={() => setIsPlayerPanelOpen(true)}
+               >
+                 <Trophy size={18} className="text-yellow-600" />
+               </Button>
+               <Button 
+                variant="outline" 
+                size="icon" 
+                className="xl:hidden rounded-xl border-black/5"
+                onClick={() => setIsLogOpen(true)}
+               >
+                 <ScrollText size={18} className="text-gray-500" />
+               </Button>
+            </div>
+          </div>
+
+          {/* New: Status Ribbon */}
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+            <AnimatePresence mode="wait">
+              {showYourTurn && (
+                <motion.div
+                  initial={{ y: -100, opacity: 0, scale: 0.8 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  exit={{ y: -100, opacity: 0, scale: 0.8 }}
+                  className="bg-accent text-text-dark px-10 py-3 rounded-full shadow-2xl border-4 border-white font-black text-xl italic uppercase tracking-tighter flex items-center gap-3"
+                >
+                  <PartyPopper className="text-orange-600 animate-bounce" />
+                  Your Turn to Rule!
+                </motion.div>
+              )}
+              {state.isRolling && (
+                <motion.div
+                  initial={{ y: -100, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -100, opacity: 0 }}
+                  className="bg-white text-text-dark px-8 py-3 rounded-full shadow-lg border border-gray-100 font-black text-sm uppercase tracking-widest flex items-center gap-3"
+                >
+                  <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                  {state.players[state.currentPlayerIndex].name} is rolling...
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Board Viewport */}
+          <div className="flex-1 relative overflow-auto custom-scrollbar flex items-center justify-center p-4 lg:p-12">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="relative z-0 scale-[0.6] sm:scale-[0.8] md:scale-90 lg:scale-100"
+            >
+              <Board />
+            </motion.div>
+          </div>
+
+          {/* Bottom Action Area */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-4">
+            <Dice />
+          </div>
+          
+          {/* Chat - Floating properly */}
+          <div className="absolute bottom-6 right-6 z-30">
+            <Chat />
+          </div>
+        </div>
+
+        {/* Right Sidebar (Log) */}
+        <div className="hidden xl:flex w-[360px] flex-col bg-white border-l border-black/5 h-full overflow-hidden shrink-0">
+          <ActivityLog logs={logs} />
+          <div className="flex-1 p-6 flex flex-col transition-all bg-gray-50/20">
+             <div className="flex items-center gap-2 text-text-dark/40 font-black text-[10px] uppercase tracking-[0.2em] mb-4">
+                <MessageSquare size={12} />
+                Strategic Intel
+             </div>
+             <div className="flex-1 bg-white rounded-[32px] border border-black/5 shadow-inner p-4 text-[11px] text-gray-400 italic flex items-center justify-center text-center">
+                Keep track of your opponents' moves in the activity log above.
+             </div>
+          </div>
+        </div>
       </div>
 
-      {/* Your Turn Overlay */}
-      <AnimatePresence>
-        {showYourTurn && (
-          <motion.div
-            initial={{ scale: 0.5, opacity: 0, y: -100, rotateX: 45 }}
-            animate={{ 
-              scale: 1, 
-              opacity: 1, 
-              y: 0, 
-              rotateX: 0,
-              boxShadow: ['0 0 20px rgba(244,208,63,0)', '0 0 50px rgba(244,208,63,0.6)', '0 0 20px rgba(244,208,63,0)']
-            }}
-            exit={{ scale: 1.5, opacity: 0, y: 100, rotateX: -45 }}
-            transition={{ 
-              type: "spring", 
-              stiffness: 400, 
-              damping: 15,
-              boxShadow: { repeat: Infinity, duration: 1.5 }
-            }}
-            className="fixed inset-0 z-[110] flex items-center justify-center pointer-events-none perspective-1000"
-          >
-            <div className="relative">
-              <div className="bg-accent text-text-dark px-16 py-8 rounded-[48px] shadow-2xl border-4 border-white/60 backdrop-blur-md overflow-hidden">
-                <motion.div 
-                  animate={{ x: ['-100%', '200%'] }}
-                  transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-20"
-                />
-                <h2 className="text-4xl md:text-7xl font-black uppercase tracking-tighter italic relative z-10 drop-shadow-lg">Your Turn!</h2>
-              </div>
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ repeat: Infinity, duration: 1 }}
-                className="absolute -top-4 -right-4 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-xl border-2 border-accent"
-              >
-                <PartyPopper size={24} className="text-accent" />
-              </motion.div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Robber Alert - Adjusted to not overlap sidebar */}
-      <AnimatePresence>
-        {showRobberAlert && (
-          <motion.div
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -100, opacity: 0 }}
-            className="fixed top-24 left-1/2 -translate-x-1/2 z-[110]"
-          >
-            <div className="bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border-2 border-red-400 backdrop-blur-md">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
-                <span className="text-xl">👤</span>
-              </div>
-              <div>
-                <p className="font-black uppercase tracking-widest text-[10px]">Alert</p>
-                <p className="font-bold">Robber Activated!</p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
-      {/* Winner Overlay */}
-      {state.winner !== null && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xl">
-          <motion.div 
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white p-12 rounded-[48px] shadow-2xl text-center flex flex-col items-center gap-6 max-w-md mx-4"
-          >
-            <div className="relative">
-              <motion.div
-                animate={{ rotate: [0, 10, -10, 10, 0] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-              >
-                <Trophy size={80} className="text-yellow-500" />
-              </motion.div>
-              <motion.div
-                animate={{ scale: [1, 1.5, 1], opacity: [0, 1, 0] }}
-                transition={{ repeat: Infinity, duration: 1 }}
-                className="absolute -top-4 -right-4"
-              >
-                <PartyPopper size={40} className="text-orange-500" />
-              </motion.div>
-            </div>
-            
-            <div>
-              <h2 className="text-4xl font-black text-text-dark uppercase tracking-tighter mb-2">Victory!</h2>
-              <p className="text-xl font-bold text-gray-500">
-                {state.players.find(p => p.id === state.winner)?.name} has conquered Katan!
-              </p>
-            </div>
-
-            <Button 
-              onClick={() => window.location.reload()}
-              className="w-full bg-text-dark hover:bg-accent hover:text-text-dark font-black py-8 rounded-2xl shadow-xl transition-all uppercase tracking-widest text-sm"
-            >
-              Play Again
-            </Button>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Discard Overlay */}
-      <DiscardOverlay />
-
-      {/* Steal Overlay */}
-      <StealOverlay />
-
-      {/* Sidebar - Left (Desktop: Fixed, Mobile: Animated Sheet) */}
-      <AnimatePresence>
-        {(isPlayerPanelOpen || window.innerWidth >= 1024) && (
-          <motion.aside 
-            initial={{ x: -400 }}
-            animate={{ x: 0 }}
-            exit={{ x: -400 }}
-            className={cn(
-              "fixed lg:static inset-y-0 left-0 z-50 lg:z-10 flex flex-col gap-4",
-              !isPlayerPanelOpen && "hidden lg:flex"
-            )}
-          >
-            <div className="relative h-full">
-              {isPlayerPanelOpen && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="absolute top-4 right-4 lg:hidden rounded-full hover:bg-black/5"
-                  onClick={() => setIsPlayerPanelOpen(false)}
-                >
-                  <X size={20} />
-                </Button>
-              )}
-              <PlayerPanel />
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
-
-      {/* Overlay for mobile sidebar */}
+      {/* Mobile Overlays for Sidebars */}
       <AnimatePresence>
         {isPlayerPanelOpen && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm lg:hidden"
             onClick={() => setIsPlayerPanelOpen(false)}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Main Game Area */}
-      <main className="flex-1 relative flex flex-col items-center justify-center p-4">
-        {/* Top Status Banner - Persistent Turn Indicator */}
-        <motion.div 
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="absolute top-0 inset-x-0 z-30 pointer-events-none flex justify-center py-4"
-        >
-          <div className="bg-white/80 backdrop-blur-md px-8 py-3 rounded-b-3xl border-x border-b border-black/5 shadow-xl flex items-center gap-6 pointer-events-auto overflow-hidden">
-             <div className="flex flex-col items-center">
-                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Current Match</span>
-                <span className="text-xs font-black text-text-dark tracking-tighter">Room: {roomId}</span>
-             </div>
-             
-             <div className="h-8 w-px bg-black/5" />
-             
-             <div className="flex items-center gap-3">
-                <div className={cn("w-6 h-6 rounded-full border-2 border-white shadow-sm", state.players[state.currentPlayerIndex].color)} />
-                <div className="flex flex-col">
-                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Active Turn</span>
-                   <span className="text-sm font-black text-text-dark">
-                      {state.players[state.currentPlayerIndex].name}
-                   </span>
-                </div>
-             </div>
-
-             {state.gamePhase === 'setup' && (
-                <div className="bg-orange-600 px-3 py-1 rounded-full">
-                   <span className="text-[9px] font-black text-white uppercase tracking-widest">Setup Phase</span>
-                </div>
-             )}
-          </div>
-        </motion.div>
-
-        {/* Board Container */}
-        <div className="w-full h-full flex items-center justify-center overflow-auto custom-scrollbar pt-20 pb-28">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.3, duration: 1, ease: "backOut" }}
-            className="relative z-0 scale-[0.6] sm:scale-75 md:scale-90 lg:scale-100"
           >
-            <Board />
+            <motion.div
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              onClick={(e) => e.stopPropagation()}
+              className="h-full w-[320px] bg-white shadow-2xl relative"
+            >
+               <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute top-4 right-4 rounded-full z-[70]"
+                onClick={() => setIsPlayerPanelOpen(false)}
+               >
+                 <X size={20} />
+               </Button>
+               <PlayerPanel />
+            </motion.div>
           </motion.div>
-        </div>
-
-        {/* Action Panel (Bottom Center) */}
-        <motion.div 
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20"
-        >
-          <Dice />
-        </motion.div>
-
-        {/* Chat Panel (Floating Bottom Right) - Shifted to avoid overlap on mobile */}
-        <div className="absolute bottom-6 right-6 z-30 sm:bottom-8 sm:right-8">
-          <Chat />
-        </div>
-      </main>
-
-      {/* Activity Log - Right Sidebar (Desktop: Fixed, Mobile: Toggleable) */}
-      <AnimatePresence>
-        {(isLogOpen || window.innerWidth >= 1280) && (
-          <motion.aside 
-            initial={{ x: 400 }}
-            animate={{ x: 0 }}
-            exit={{ x: 400 }}
-            className={cn(
-              "fixed xl:static inset-y-0 right-0 z-50 xl:z-10 flex flex-col",
-              !isLogOpen && "hidden xl:flex"
-            )}
-          >
-            <div className="relative h-full flex flex-col">
-              {isLogOpen && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="absolute top-4 left-4 xl:hidden rounded-full hover:bg-black/5"
-                  onClick={() => setIsLogOpen(false)}
-                >
-                  <X size={20} />
-                </Button>
-              )}
-              <ActivityLog logs={logs} />
-            </div>
-          </motion.aside>
         )}
-      </AnimatePresence>
 
-      {/* Overlay for mobile log */}
-      <AnimatePresence>
         {isLogOpen && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm xl:hidden"
             onClick={() => setIsLogOpen(false)}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 xl:hidden"
-          />
+          >
+            <motion.div
+              initial={{ x: 360 }}
+              animate={{ x: 0 }}
+              exit={{ x: 360 }}
+              className="absolute right-0 h-full w-[360px] bg-white shadow-2xl overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+               <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute top-4 left-4 rounded-full z-[70]"
+                onClick={() => setIsLogOpen(false)}
+               >
+                 <X size={20} />
+               </Button>
+               <ActivityLog logs={logs} />
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Discard & Steal */}
+      <DiscardOverlay />
+      <StealOverlay />
+      
+      {/* Winner */}
+      {state.winner !== null && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-6"
+        >
+          <motion.div 
+            initial={{ scale: 0.8, y: 50 }}
+            animate={{ scale: 1, y: 0 }}
+            className="bg-white rounded-[64px] p-12 text-center max-w-lg w-full shadow-2xl border-8 border-accent"
+          >
+             <Trophy size={100} className="text-yellow-500 mx-auto mb-8" />
+             <h2 className="text-5xl font-black text-text-dark mb-4 uppercase">Katan Crowned!</h2>
+             <p className="text-2xl font-bold text-gray-500 mb-10">
+               {state.players.find(p => p.id === state.winner)?.name} is the Master Settler.
+             </p>
+             <Button 
+              onClick={() => window.location.reload()}
+              className="bg-accent text-text-dark px-12 py-8 rounded-3xl font-black text-xl hover:scale-105 transition-transform w-full shadow-xl"
+             >
+                Start New Adventure
+             </Button>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 });

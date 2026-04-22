@@ -405,7 +405,8 @@ async function startServer() {
         logs: [isLocal ? "Local game started!" : "Online room created. Waiting for players..."],
         version: 0,
         isLocal: !!isLocal,
-        isOnline: !isLocal
+        isOnline: !isLocal,
+        isRolling: false
       };
 
       rooms[roomId] = {
@@ -518,20 +519,51 @@ async function startServer() {
       }
     });
 
-    socket.on("joinGame", ({ roomId, playerName, reconnecting }) => {
+    socket.on("updatePlayerName", ({ roomId, playerId, name }) => {
+      const room = rooms[roomId];
+      if (!room) return;
+
+      const player = room.state.players.find(p => p.id === playerId);
+      if (player) {
+         const oldName = player.name;
+         player.name = name;
+         
+         // Also update the internal players list
+         const internalPlayer = room.players.find(p => p.playerId === playerId);
+         if (internalPlayer) {
+           internalPlayer.name = name;
+         }
+
+         addLog(room, `${oldName} changed their name to ${name}.`);
+         emitGameState(roomId);
+      }
+    });
+
+    socket.on("joinGame", ({ roomId, playerName, reconnecting, storedPlayerId }) => {
       const room = rooms[roomId];
       if (!room) {
         socket.emit("error", "Room not found");
         return;
       }
 
-      // Handle reconnection
-      if (reconnecting) {
-        const existingPlayer = room.players.find(p => p.name === playerName);
+      // Robust reconnection logic using stored ID if available
+      if (reconnecting || storedPlayerId) {
+        const existingPlayer = room.players.find(p => 
+          (storedPlayerId && p.playerId === Number(storedPlayerId)) || 
+          (!storedPlayerId && p.name === playerName)
+        );
+        
         if (existingPlayer) {
           existingPlayer.socketId = socket.id;
           socket.join(roomId);
-          socket.emit("gameJoined", { roomId, state: room.state, tiles: room.tiles, playerId: existingPlayer.playerId, playerName });
+          socket.emit("gameJoined", { 
+            roomId, 
+            state: room.state, 
+            tiles: room.tiles, 
+            playerId: existingPlayer.playerId, 
+            playerName: existingPlayer.name 
+          });
+          addLog(room, `${existingPlayer.name} reconnected.`);
           return;
         }
       }
@@ -583,70 +615,74 @@ async function startServer() {
 
     socket.on("rollDice", ({ roomId }) => {
       const room = rooms[roomId];
-      if (!room || room.state.gamePhase !== 'play' || room.state.hasRolled) return;
+      if (!room || room.state.gamePhase !== 'play' || room.state.hasRolled || room.state.isRolling) return;
 
-      // Validation: only current player can roll
-      const currentPlayer = room.players.find(p => p.playerId === room.state.players[room.state.currentPlayerIndex].id);
-      if (currentPlayer?.socketId !== socket.id) return;
+      const currentPlayerId = room.state.players[room.state.currentPlayerIndex].id;
+      const currentPlayerSocket = room.players.find(p => p.playerId === currentPlayerId);
+      if (!room.isLocal && currentPlayerSocket?.socketId !== socket.id) return;
 
-      const d1 = Math.floor(Math.random() * 6) + 1;
-      const d2 = Math.floor(Math.random() * 6) + 1;
-      const total = d1 + d2;
-
-      room.state.dice = [d1, d2];
-      room.state.hasRolled = true;
-      addLog(room, `${currentPlayer.name} rolled a ${total}.`);
-
-      if (total === 7) {
-        // Check for discards
-        const playersToDiscard = room.state.players
-          .filter(p => Object.values(p.resources).reduce((a, b) => (a as number) + (b as number), 0) > 7)
-          .map(p => p.id);
-        
-        if (playersToDiscard.length > 0) {
-          room.state.gamePhase = 'discarding';
-          room.state.discardingPlayers = playersToDiscard;
-        } else {
-          room.state.gamePhase = 'robber';
-        }
-      } else {
-        // Distribute resources
-        const updatedPlayers = [...room.state.players];
-        const resourceGains: Record<string, Record<ResourceType, number>> = {};
-        
-        (Object.values(room.state.settlements) as Settlement[]).forEach(settlement => {
-          const player = updatedPlayers.find(p => p.id === settlement.playerId);
-          if (!player) return;
-
-          const tileCoords = settlement.vertexId.replace('v:', '').split('|').map(s => s.split(',').map(Number));
-          tileCoords.forEach(([q, r]) => {
-            const tile = getTileAt(room.tiles, q, r);
-            if (tile && tile.number === total && tile.id !== room.state.robberTileId) {
-              const amount = settlement.type === 'city' ? 2 : 1;
-              const resType = tile.type;
-              if (resType !== 'desert') {
-                player.resources[resType] += amount;
-                
-                if (!resourceGains[player.name]) resourceGains[player.name] = {} as Record<ResourceType, number>;
-                if (!resourceGains[player.name][resType]) resourceGains[player.name][resType] = 0;
-                resourceGains[player.name][resType] += amount;
-              }
-            }
-          });
-        });
-        
-        // Grouped logging for resources
-        Object.entries(resourceGains).forEach(([name, gains]) => {
-          const gainStr = Object.entries(gains)
-            .map(([res, count]) => `${count} ${res.charAt(0).toUpperCase() + res.slice(1)}`)
-            .join(', ');
-          addLog(room, `${name} received: ${gainStr}`);
-        });
-
-        room.state.players = updatedPlayers;
-      }
-
+      room.state.isRolling = true;
+      room.state.version++;
       emitGameState(roomId);
+
+      setTimeout(() => {
+        if (!rooms[roomId]) return;
+        const freshRoom = rooms[roomId];
+        
+        const d1 = Math.floor(Math.random() * 6) + 1;
+        const d2 = Math.floor(Math.random() * 6) + 1;
+        const total = d1 + d2;
+
+        freshRoom.state.dice = [d1, d2];
+        freshRoom.state.hasRolled = true;
+        freshRoom.state.isRolling = false;
+        freshRoom.state.version++;
+        
+        addLog(freshRoom, `${freshRoom.state.players[freshRoom.state.currentPlayerIndex].name} rolled a ${total}.`);
+
+        if (total === 7) {
+          const playersToDiscard = freshRoom.state.players
+            .filter(p => Object.values(p.resources).reduce((a, b) => (a as number) + (b as number), 0) > 7)
+            .map(p => p.id);
+          
+          if (playersToDiscard.length > 0) {
+            freshRoom.state.gamePhase = 'discarding';
+            freshRoom.state.discardingPlayers = playersToDiscard;
+          } else {
+            freshRoom.state.gamePhase = 'robber';
+          }
+        } else {
+          const updatedPlayers = [...freshRoom.state.players];
+          const resourceGains: Record<string, Record<string, number>> = {};
+          
+          (Object.values(freshRoom.state.settlements) as Settlement[]).forEach(settlement => {
+            const player = updatedPlayers.find(p => p.id === settlement.playerId);
+            if (!player) return;
+
+            const tileCoords = settlement.vertexId.replace('v:', '').split('|').map(s => s.split(',').map(Number));
+            tileCoords.forEach(([q, r]) => {
+              const tile = getTileAt(freshRoom.tiles, q, r);
+              if (tile && tile.number === total && tile.id !== freshRoom.state.robberTileId) {
+                const amount = settlement.type === 'city' ? 2 : 1;
+                const resType = tile.type;
+                if (resType !== 'desert') {
+                  player.resources[resType] += amount;
+                  if (!resourceGains[player.name]) resourceGains[player.name] = {};
+                  resourceGains[player.name][resType] = (resourceGains[player.name][resType] || 0) + amount;
+                }
+              }
+            });
+          });
+
+          Object.entries(resourceGains).forEach(([name, gains]) => {
+            const gainStr = Object.entries(gains).map(([res, count]) => `${count} ${res}`).join(', ');
+            if (gainStr) addLog(freshRoom, `${name} received: ${gainStr}`);
+          });
+
+          freshRoom.state.players = updatedPlayers;
+        }
+        emitGameState(roomId);
+      }, 1500);
     });
 
     socket.on("discardCards", ({ roomId, resources }) => {
@@ -805,6 +841,20 @@ async function startServer() {
         );
         if (!canAfford) return;
 
+        // Connectivity Rule: Must be next to own settlement or own road
+        // An edge ID looks like "v:0,0,0|v:0,0,1"
+        const vertices = edgeId.replace('v:', '').split('|');
+        const isConnected = Object.values(room.state.settlements).some(s => 
+          s.playerId === player.id && vertices.includes(s.vertexId)
+        ) || Object.values(room.state.roads).some(r => 
+          r.playerId === player.id && (r.edgeId.includes(vertices[0]) || r.edgeId.includes(vertices[1]))
+        );
+
+        if (!isConnected) {
+          socket.emit("error", "Road must be connected to your territory");
+          return;
+        }
+
         Object.entries(COSTS.road).forEach(([res, amount]) => {
           player.resources[res as ResourceType] -= amount;
         });
@@ -954,9 +1004,18 @@ async function startServer() {
       room.state.victims = [];
       emitGameState(roomId);
     });
+
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);
-      // Optional: handle player removal or timeout
+      // We don't remove players immediately to allow reconnection
+      // But we can log it for debug
+      for (const roomId in rooms) {
+        const room = rooms[roomId];
+        const player = room.players.find(p => p.socketId === socket.id);
+        if (player) {
+          // console.log(`Player ${player.name} in room ${roomId} disconnected.`);
+        }
+      }
     });
   });
 

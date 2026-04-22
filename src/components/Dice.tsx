@@ -9,21 +9,16 @@ export const Dice: React.FC = React.memo(() => {
   const { state, playerId } = useGameState();
   const { rollDice: contextRollDice, endTurn } = useGameActions();
   const [showConfirm, setShowConfirm] = useState(false);
-  const [isRolling, setIsRolling] = useState(false);
   
   if (!state) return null;
   
+  const isRolling = !!state.isRolling;
   const currentPlayer = state.players[state.currentPlayerIndex];
   const isMyTurn = state.isLocal || currentPlayer.id === playerId;
 
   const handleRollDice = () => {
     if (!isMyTurn || isRolling) return;
-    setIsRolling(true);
-    // Simulate rolling for 1.2s before calling context roll
-    setTimeout(() => {
-      contextRollDice();
-      setIsRolling(false);
-    }, 1200);
+    contextRollDice();
   };
 
   if (state.gamePhase === 'setup') {

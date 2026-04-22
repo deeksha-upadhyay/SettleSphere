@@ -28,6 +28,7 @@ interface GameActionsType {
   resumeDemo: () => void;
   restartDemo: () => void;
   setSimulationSpeed: (speed: number) => void;
+  updatePlayerName: (name: string) => void;
 }
 
 interface GameStateContextType {
@@ -65,7 +66,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedPlayerName = localStorage.getItem('katan_playerName');
 
     if (savedRoomId && savedPlayerId && savedPlayerName) {
-      socket.emit('joinGame', { roomId: savedRoomId, playerName: savedPlayerName, reconnecting: true });
+      socket.emit('joinGame', { 
+        roomId: savedRoomId, 
+        playerName: savedPlayerName, 
+        reconnecting: true,
+        storedPlayerId: savedPlayerId
+      });
     }
 
     socket.on('gameCreated', ({ roomId, state, tiles, playerId, playerName }) => {
@@ -225,6 +231,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     socketRef.current?.emit('setSimulationSpeed', { roomId, speed });
   }, [roomId]);
 
+  const updatePlayerName = useCallback((name: string, targetPlayerId?: number) => {
+    const idToUpdate = targetPlayerId || playerId;
+    if (!roomId || !idToUpdate) return;
+    if (idToUpdate === playerId) {
+      localStorage.setItem('katan_playerName', name);
+    }
+    socketRef.current?.emit('updatePlayerName', { roomId, playerId: idToUpdate, name });
+  }, [roomId, playerId]);
+
   const stateValue = useMemo(() => ({ 
     state, 
     playerId,
@@ -254,7 +269,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     pauseDemo,
     resumeDemo,
     restartDemo,
-    setSimulationSpeed
+    setSimulationSpeed,
+    updatePlayerName
   }), [
     createGame, 
     joinGame, 
@@ -272,7 +288,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     pauseDemo, 
     resumeDemo, 
     restartDemo, 
-    setSimulationSpeed
+    setSimulationSpeed,
+    updatePlayerName
   ]);
 
   return (
