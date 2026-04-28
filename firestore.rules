@@ -1,0 +1,56 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reuseable helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Room validation logic
+    function isValidRoom(data) {
+      return data.keys().hasAll(['state', 'tiles', 'players', 'roomId']) 
+             && data.roomId is string
+             && data.state is map
+             && data.tiles is list
+             && data.players is list;
+    }
+
+    match /rooms/{roomId} {
+      // For now, in this specialized Catan app, we allow the server (which uses admin or just standard auth) to write.
+      // Since we don't have a specific auth flow for players yet (they just join with names),
+      // we will keep it simple but secure.
+      
+      // In a real production app, we'd use custom claims or specific player verification.
+      // For this applet, players join by roomId.
+      
+      allow read: if true; // Publicly readable so anyone with roomId can join
+      
+      // Only the server or authorized users should write. 
+      // If the app doesn't use Firebase Auth for players, writes from client should be restricted.
+      // However, if the client needs to sync direct state changes (not recommended for Catan), we'd need more logic.
+      // Here, the server (Node.js) will be the one updating Firestore.
+      
+      allow create, update: if isSignedIn() && isValidRoom(request.resource.data);
+      allow delete: if isSignedIn();
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+    }
+  }
+}

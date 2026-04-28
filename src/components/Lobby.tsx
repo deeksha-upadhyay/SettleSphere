@@ -1,17 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../contexts/GameContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
 import { motion } from 'motion/react';
 import { useParams } from 'react-router-dom';
 
 import { HowToPlay } from './HowToPlay';
+import { UserMenu } from './Auth/UserMenu';
 
 import { Play, Eye, Users } from 'lucide-react';
 
 export const Lobby: React.FC = () => {
   const { id: urlRoomId } = useParams<{ id: string }>();
   const { createGame, joinGame, startDemo } = useGame();
+  const { user } = useAuth();
   const [playerName, setPlayerName] = useState('');
+
+  useEffect(() => {
+    if (user?.displayName) {
+      setPlayerName(user.displayName);
+    }
+  }, [user]);
   const [roomIdInput, setRoomIdInput] = useState('');
   const [mode, setMode] = useState<'selection' | 'local' | 'online' | 'join'>('selection');
   const [playerCount, setPlayerCount] = useState(3);
@@ -215,6 +224,11 @@ export const Lobby: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-sea flex items-center justify-center p-4 relative overflow-hidden">
+      {/* User Auth Menu */}
+      <div className="absolute top-6 right-6 z-50">
+        <UserMenu />
+      </div>
+
       {/* Animated Background Elements (reused from previous design) */}
       <motion.div 
         animate={{ scale: [1, 1.2, 1], rotate: [0, 360] }}

@@ -3,6 +3,7 @@ import { useGame } from '../contexts/GameContext';
 import { Button } from './ui/button';
 import { motion } from 'motion/react';
 import { Users, Copy, Play } from 'lucide-react';
+import { UserMenu } from './Auth/UserMenu';
 
 import { toast } from 'sonner';
 
@@ -22,7 +23,9 @@ export const WaitingRoom: React.FC = () => {
 
   const copyRoomLink = () => {
     if (roomId) {
-      const url = `${window.location.origin}/room/${roomId}`;
+      const env = (import.meta as any).env;
+      const baseUrl = env?.VITE_APP_URL || window.location.origin;
+      const url = `${baseUrl}/room/${roomId}`;
       navigator.clipboard.writeText(url);
       toast.success('Room link copied to clipboard!');
     }
@@ -30,6 +33,11 @@ export const WaitingRoom: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-sea flex items-center justify-center p-4 relative overflow-hidden">
+      {/* User Auth Menu */}
+      <div className="absolute top-6 right-6 z-50">
+        <UserMenu />
+      </div>
+
       {/* Animated Background Elements */}
       <motion.div 
         animate={{ 

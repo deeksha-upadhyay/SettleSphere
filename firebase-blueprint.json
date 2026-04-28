@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "Room": {
+      "title": "Game Room",
+      "description": "Represents a Catan game session",
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "object",
+          "description": "The serialized GameState object"
+        },
+        "tiles": {
+          "type": "array",
+          "description": "The generated tiles for this game"
+        },
+        "players": {
+          "type": "array",
+          "description": "List of player objects with socketId counterparts (or auth UIDs)"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "state",
+        "tiles",
+        "players",
+        "roomId"
+      ]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Individual game rooms"
+    }
+  }
+}

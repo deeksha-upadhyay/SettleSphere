@@ -10,6 +10,7 @@ import { Chat } from './Chat';
 import { HowToPlay } from './HowToPlay';
 import { DemoControls } from './DemoControls';
 import { ActivityLog } from './ActivityLog';
+import { UserMenu } from './Auth/UserMenu';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGameState, useActivity } from '../contexts/GameContext';
 import { Button } from './ui/button';
@@ -104,6 +105,9 @@ export const GameUI: React.FC = React.memo(() => {
             </div>
 
             <div className="flex items-center gap-2">
+               <div className="hidden lg:block mr-2">
+                 <UserMenu />
+               </div>
                <Button 
                 variant="outline" 
                 size="icon" 

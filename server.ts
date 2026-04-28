@@ -5,13 +5,46 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import cors from "cors";
+import { initializeApp } from 'firebase/app';
+import { initializeFirestore, doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+let firebaseConfig: any = {};
+try {
+  const configPath = path.join(__dirname, 'firebase-applet-config.json');
+  if (fs.existsSync(configPath)) {
+    firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    console.log("[Server] Firebase configuration loaded.");
+  } else {
+    console.warn("[Server] WARNING: firebase-applet-config.json not found. Firebase will not be initialized.");
+  }
+} catch (err) {
+  console.error("[Server] Error reading firebase-applet-config.json:", err);
+}
+
+let app: any = null;
+let db: any = null;
+let auth: any = null;
+
+if (firebaseConfig.projectId) {
+  try {
+    const firebaseApp = initializeApp(firebaseConfig);
+    db = initializeFirestore(firebaseApp, {
+      experimentalForceLongPolling: true,
+      experimentalAutoDetectLongPolling: true,
+    }, firebaseConfig.firestoreDatabaseId);
+    console.log("[Server] Firebase initialized successfully.");
+  } catch (err) {
+    console.error("[Server] Firebase initialization failed:", err);
+  }
+}
+
 // Vite is imported dynamically in dev mode to avoid production crashes
 // import { createServer as createViteServer } from "vite";
 import { GameState, Player, ResourceType, TileData, Settlement, Road } from "./src/types";
 import { getTileAt, getCanonicalVertexId, getCanonicalEdgeId } from "./src/lib/gameUtils";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Initial tiles for the hexagonal board
 const initialTiles: TileData[] = [
@@ -60,6 +93,62 @@ interface Room {
 const rooms: Record<string, Room> = {};
 let socketIo: Server | null = null;
 
+async function persistRoom(roomId: string) {
+  const room = rooms[roomId];
+  if (!room || room.isDemo || !db) return;
+  
+  try {
+    await setDoc(doc(db, 'rooms', roomId), {
+      id: roomId,
+      state: room.state,
+      tiles: room.tiles,
+      players: room.players.map(p => ({
+        playerId: p.playerId,
+        name: p.name
+      })),
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error(`[Firebase] Error persisting room ${roomId}:`, error);
+  }
+}
+
+async function loadRooms() {
+  if (!db) {
+    console.warn("[Firebase] Skipping loadRooms: Firestore not initialized.");
+    return;
+  }
+  console.log("[Firebase] Loading rooms from Firestore...");
+  try {
+    const querySnapshot = await getDocs(collection(db, 'rooms'));
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      // Only load rooms updated in the last 24 hours to keep active memory clean
+      const updatedAt = new Date(data.updatedAt);
+      const now = new Date();
+      const diffMs = now.getTime() - updatedAt.getTime();
+      const diffHrs = diffMs / (1000 * 60 * 60);
+      
+      if (diffHrs < 24) {
+        rooms[docSnap.id] = {
+          id: docSnap.id,
+          state: data.state,
+          tiles: data.tiles,
+          players: data.state.players.map((p: any) => ({
+            socketId: "",
+            playerId: p.id,
+            name: p.name
+          })),
+          isLocal: data.state.isLocal
+        };
+        console.log(`[Firebase] Restored room: ${docSnap.id}`);
+      }
+    });
+  } catch (error) {
+    console.error("[Firebase] Error loading rooms:", error);
+  }
+}
+
 function emitGameState(roomId: string, logMessage?: string) {
   if (!socketIo) return;
   const room = rooms[roomId];
@@ -73,6 +162,9 @@ function emitGameState(roomId: string, logMessage?: string) {
   if (logMessage) {
     socketIo.to(roomId).emit("newLog", logMessage);
   }
+
+  // Persist to Firestore
+  persistRoom(roomId);
 }
 
 function getAllVertices(tiles: TileData[]) {
@@ -328,9 +420,19 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
+  // Request logging middleware
+  app.use((req, res, next) => {
+    console.log(`[Server] ${req.method} ${req.path}`);
+    next();
+  });
+
   // API routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  app.get("/ping", (req, res) => {
+    res.send("pong");
   });
 
   app.get("/debug", (req, res) => {
@@ -342,7 +444,8 @@ async function startServer() {
       dirname: __dirname,
       distExists: fs.existsSync(distPath),
       indexExists: fs.existsSync(indexPath),
-      distContent: fs.existsSync(distPath) ? fs.readdirSync(distPath) : []
+      distContent: fs.existsSync(distPath) ? fs.readdirSync(distPath) : [],
+      headers: req.headers
     });
   });
 
@@ -1020,11 +1123,12 @@ async function startServer() {
   });
 
   // Serve static files and handle routing
-  const isDevelopment = process.env.NODE_ENV === "development";
-  console.log(`[Server] Environment: ${process.env.NODE_ENV || "production"} (isDevelopment: ${isDevelopment})`);
+  const nodeEnv = process.env.NODE_ENV || "production";
+  const isDevelopment = nodeEnv !== "production";
+  console.log(`[Server] Detected Environment: "${nodeEnv}" (isDevelopment: ${isDevelopment})`);
   
-  if (isDevelopment) {
-    console.log("[Server] Starting with Vite middleware (Development Mode)");
+  if (isDevelopment && nodeEnv !== "test") {
+    console.log("[Server] Attempting to start with Vite middleware (Development Mode)...");
     try {
       const { createServer: createViteServer } = await import("vite");
       const vite = await createViteServer({
@@ -1032,57 +1136,71 @@ async function startServer() {
         appType: "spa",
       });
       app.use(vite.middlewares);
+      console.log("[Server] Vite middleware attached successfully.");
     } catch (e) {
-      console.error("[Server] Critical: Failed to load Vite middleware:", e);
-      // Fallback: search for dist
-      const distPath = path.resolve(process.cwd(), "dist");
-      if (fs.existsSync(distPath)) {
-        console.log(`[Server] Falling back to static files from: ${distPath}`);
-        app.use(express.static(distPath));
-      }
+      console.error("[Server] Critical: Failed to load Vite middleware. Falling back to static files.", e);
+      serveStaticFallback(app);
     }
   } else {
-    // Production Mode - be extremely explicit and robust
-    const distPath = path.resolve(process.cwd(), "dist");
-    const indexPath = path.resolve(distPath, "index.html");
-    
-    console.log(`[Server] Production Mode Active`);
-    console.log(`[Server] Dist Path: ${distPath}`);
-    console.log(`[Server] Index Path: ${indexPath}`);
-    
-    // Explicitly serve static files
-    app.use(express.static(distPath, { index: 'index.html' }));
-    
-    // Catch-all route for React Router (must be AFTER static assets)
-    app.get("*", (req, res) => {
-      console.log(`[Server] Request Path: ${req.path}`);
-      
-      // Serve index.html for all non-file routes
-      if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-      } else {
-        const errorDetails = {
-          message: "Production build (index.html) missing",
-          indexPath,
-          distPath,
-          cwd: process.cwd(),
-          files: fs.existsSync(distPath) ? fs.readdirSync(distPath) : ["DIST_FOLDER_MISSING"]
-        };
-        console.error(`[Server] 404 Error: ${JSON.stringify(errorDetails)}`);
-        res.set('Content-Type', 'text/html');
-        res.status(404).send(`
-          <div style="font-family: system-ui; padding: 2rem;">
-            <h1>404: Build Not Found</h1>
-            <pre>${JSON.stringify(errorDetails, null, 2)}</pre>
-          </div>
-        `);
-      }
-    });
+    // Production Mode
+    serveStaticFallback(app);
   }
 
   const PORT = 3000;
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`[Server] SUCCESS: Listening on 0.0.0.0:${PORT}`);
+  });
+}
+
+function serveStaticFallback(app: any) {
+  const rootDir = process.cwd();
+  const distPath = path.resolve(rootDir, "dist");
+  const indexPath = path.resolve(distPath, "index.html");
+  
+  console.log(`[Server] Static Fallback Initialized`);
+  console.log(`[Server] Root Directory: ${rootDir}`);
+  console.log(`[Server] Dist Path: ${distPath}`);
+  console.log(`[Server] Index Path: ${indexPath}`);
+  
+  if (fs.existsSync(distPath)) {
+    console.log(`[Server] Found dist folder. Serving static assets.`);
+    app.use(express.static(distPath));
+  } else {
+    console.warn(`[Server] WARNING: dist folder NOT FOUND at ${distPath}. If this is production, the front-end will not load.`);
+  }
+  
+  app.get("*", (req: any, res: any) => {
+    // Skip API routes if they fell through
+    if (req.path.startsWith("/api/")) {
+      return res.status(404).json({ error: "API route not found" });
+    }
+    
+    console.log(`[Server] Static catch-all serving for: ${req.path}`);
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      console.error(`[Server] ERROR: ${indexPath} missing.`);
+      res.status(404).send(`
+        <html>
+          <body style="font-family: sans-serif; padding: 2rem; background: #f9fafb; color: #111827;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
+              <h1 style="color: #ef4444;">Server Running, but Build Missing</h1>
+              <p>The Node.js server is successfully listening on port 3000, but the front-end build artifacts (index.html) were not found.</p>
+              <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e5e7eb;"/>
+              <div style="font-size: 0.875rem; color: #4b5563;">
+                <p><strong>Diagnosis Info:</strong></p>
+                <ul style="list-style: none; padding: 0;">
+                  <li>â€¢ Expected Path: <code>${indexPath}</code></li>
+                  <li>â€¢ Current WorkDir: <code>${process.cwd()}</code></li>
+                  <li>â€¢ Environment: <code>${process.env.NODE_ENV}</code></li>
+                  <li>â€¢ Files in root: <code>${fs.readdirSync(process.cwd()).join(', ')}</code></li>
+                </ul>
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
+    }
   });
 }
 
@@ -1095,7 +1213,31 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('[Server] CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-startServer().catch(err => {
+async function testFirebaseConnection() {
+  if (!db) return;
+  try {
+    const { getDocFromServer } = await import('firebase/firestore');
+    await getDocFromServer(doc(db, 'test', 'connection'));
+    console.log("[Firebase] Connection check successful.");
+  } catch (error: any) {
+    if (error.message?.includes('the client is offline')) {
+      console.error("[Firebase] CRITICAL: Client is offline. Check configuration.");
+    } else {
+      console.log("[Firebase] Connection check info:", error.message);
+    }
+  }
+}
+
+// Load existing rooms can be done in the background or awaited after server start
+startServer().then(async () => {
+  console.log("[Server] Attempting to load initial state from Firestore...");
+  try {
+    await loadRooms();
+    await testFirebaseConnection();
+  } catch (err) {
+    console.error("[Server] Post-startup loading error:", err);
+  }
+}).catch(err => {
   console.error('[Server] CRITICAL: Fatal Startup Error:', err);
   process.exit(1);
 });
